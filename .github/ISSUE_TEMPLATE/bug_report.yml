@@ -2,27 +2,28 @@ name: "Bug report"
 description: "Reporte um problema ou comportamento incorreto no app mobile"
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
+
 body:
-  - type: markdown
+  - type: "markdown"
     attributes:
       value: |
         Obrigado por reportar este problema.
         Antes de abrir a issue, verifique se já não existe um relato semelhante.
 
-  - type: textarea
-    id: summary
+  - type: "textarea"
+    id: "summary"
     attributes:
-      label: Resumo do problema
-      description: Explique o bug de forma objetiva
-      placeholder: Ex.: Ao abrir a tela de mural, o app fecha inesperadamente
+      label: "Resumo do problema"
+      description: "Explique o bug de forma objetiva"
+      placeholder: "Ex.: Ao abrir a tela de mural, o app fecha inesperadamente"
     validations:
       required: true
 
-  - type: textarea
-    id: steps
+  - type: "textarea"
+    id: "steps"
     attributes:
-      label: Passos para reproduzir
-      description: Liste o passo a passo para reproduzir o erro
+      label: "Passos para reproduzir"
+      description: "Liste o passo a passo para reproduzir o erro"
       placeholder: |
         1. Abrir o app
         2. Ir para a tela X
@@ -31,70 +32,70 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: expected
+  - type: "textarea"
+    id: "expected"
     attributes:
-      label: Comportamento esperado
-      description: O que deveria acontecer?
-      placeholder: Ex.: A tela deveria carregar normalmente
+      label: "Comportamento esperado"
+      description: "O que deveria acontecer?"
+      placeholder: "Ex.: A tela deveria carregar normalmente"
     validations:
       required: true
 
-  - type: textarea
-    id: actual
+  - type: "textarea"
+    id: "actual"
     attributes:
-      label: Comportamento atual
-      description: O que aconteceu de fato?
-      placeholder: Ex.: O app travou e fechou
+      label: "Comportamento atual"
+      description: "O que aconteceu de fato?"
+      placeholder: "Ex.: O app travou e fechou"
     validations:
       required: true
 
-  - type: dropdown
-    id: platform
+  - type: "dropdown"
+    id: "platform"
     attributes:
-      label: Plataforma
-      description: Onde o problema ocorreu?
+      label: "Plataforma"
+      description: "Onde o problema ocorreu?"
       options:
-        - Android
-        - iOS
-        - Ambos
+        - "Android"
+        - "iOS"
+        - "Ambos"
     validations:
       required: true
 
-  - type: input
-    id: app_version
+  - type: "input"
+    id: "app_version"
     attributes:
-      label: Versão do app
-      description: Informe a versão do aplicativo, se disponível
-      placeholder: Ex.: 1.2.0
+      label: "Versão do app"
+      description: "Informe a versão do aplicativo, se disponível"
+      placeholder: "Ex.: 1.2.0"
 
-  - type: input
-    id: os_version
+  - type: "input"
+    id: "os_version"
     attributes:
-      label: Versão do sistema operacional
-      description: Ex.: Android 14 / iOS 17.4
-      placeholder: Ex.: Android 14
+      label: "Versão do sistema operacional"
+      description: "Ex.: Android 14 / iOS 17.4"
+      placeholder: "Ex.: Android 14"
 
-  - type: input
-    id: device
+  - type: "input"
+    id: "device"
     attributes:
-      label: Dispositivo
-      description: Modelo do aparelho
-      placeholder: Ex.: Moto G84 / iPhone 13
+      label: "Dispositivo"
+      description: "Modelo do aparelho"
+      placeholder: "Ex.: Moto G84 / iPhone 13"
 
-  - type: textarea
-    id: logs
+  - type: "textarea"
+    id: "logs"
     attributes:
-      label: Logs, stack trace ou prints
-      description: Cole logs relevantes ou adicione imagens
-      placeholder: Ex.: stack trace do Metro, logcat, crash report
+      label: "Logs, stack trace ou prints"
+      description: "Cole logs relevantes ou adicione imagens"
+      placeholder: "Ex.: stack trace do Metro, logcat, crash report"
 
-  - type: checkboxes
-    id: checks
+  - type: "checkboxes"
+    id: "checks"
     attributes:
-      label: Verificações
+      label: "Verificações"
       options:
-        - label: Pesquisei por issues existentes antes de abrir esta
+        - label: "Pesquisei por issues existentes antes de abrir esta"
           required: true
-        - label: Consigo reproduzir este problema de forma consistente
+        - label: "Consigo reproduzir este problema de forma consistente"
           required: false
