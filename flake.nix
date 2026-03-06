@@ -76,6 +76,12 @@
             echo "Para iniciar o emulador:"
             echo "emulator -avd $AVD_NAME"
             echo ""
+
+            if [ -f package.json ]; then
+              npm install
+              npx husky
+              echo "husky initialized"
+            fi
           '';
         };
       }
