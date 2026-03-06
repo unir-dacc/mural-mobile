@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Dúvidas e suporte
+    url: https://github.com/unir-dacc/mural-mobile/discussions
+    about: Use Discussions para perguntas, dúvidas de uso e conversas gerais.
