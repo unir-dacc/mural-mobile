@@ -4,6 +4,21 @@ title: "[Feature]: "
 labels: ["enhancement", "needs-triage"]
 
 body:
+  - type: "dropdown"
+    id: "area"
+    attributes:
+      label: "Área impactada"
+      options:
+        - "UI/UX"
+        - "Autenticação"
+        - "Mural"
+        - "Notificações"
+        - "Performance"
+        - "Infraestrutura"
+        - "Outro"
+    validations:
+      required: true
+
   - type: "markdown"
     attributes:
       value: |
@@ -34,21 +49,6 @@ body:
       label: "Alternativas consideradas"
       description: "Há outra abordagem possível?"
       placeholder: "Ex.: Usar ordenação por data, favoritos ou filtros simples"
-
-  - type: "dropdown"
-    id: "area"
-    attributes:
-      label: "Área impactada"
-      options:
-        - "UI/UX"
-        - "Autenticação"
-        - "Mural"
-        - "Notificações"
-        - "Performance"
-        - "Infraestrutura"
-        - "Outro"
-    validations:
-      required: true
 
   - type: "textarea"
     id: "references"
