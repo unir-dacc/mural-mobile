@@ -51,15 +51,6 @@ body:
       required: true
 
   - type: "textarea"
-    id: "impact"
-    attributes:
-      label: "Impacto esperado"
-      description: "Quem se beneficia e como?"
-      placeholder: "Ex.: Melhora a descoberta de conteúdo e reduz tempo para encontrar informações"
-    validations:
-      required: true
-
-  - type: "textarea"
     id: "references"
     attributes:
       label: "Referências adicionais"
