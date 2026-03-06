@@ -1,0 +1,66 @@
+name: "Feature request"
+description: "Sugira uma melhoria ou nova funcionalidade para o app"
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado pela sugestão.
+        Descreva a ideia com foco no problema que ela resolve.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema ou necessidade
+      description: Que problema esta funcionalidade resolveria?
+      placeholder: Ex.: Usuários não conseguem localizar avisos antigos com facilidade
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solução proposta
+      description: Descreva a funcionalidade desejada
+      placeholder: Ex.: Adicionar busca por título e filtros por categoria no mural
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Há outra abordagem possível?
+      placeholder: Ex.: Usar ordenação por data, favoritos ou filtros simples
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área impactada
+      options:
+        - UI/UX
+        - Autenticação
+        - Mural
+        - Notificações
+        - Performance
+        - Infraestrutura
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impacto esperado
+      description: Quem se beneficia e como?
+      placeholder: Ex.: Melhora a descoberta de conteúdo e reduz tempo para encontrar informações
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: Referências adicionais
+      description: Links, mockups, prints ou contexto extra
+      placeholder: Ex.: links, protótipos, imagens

@@ -1,0 +1,42 @@
+name: "Support question"
+description: "Faça uma pergunta sobre uso, configuração ou desenvolvimento"
+title: "[Support]: "
+labels: ["question", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Para dúvidas gerais, considere usar Discussions quando fizer mais sentido.
+        Use esta issue se você precisa registrar uma pergunta com contexto técnico.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Sua dúvida
+      description: Descreva a pergunta com clareza
+      placeholder: Ex.: Como configurar o ambiente React Native deste projeto no Windows?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: Explique o que você tentou e onde travou
+      placeholder: Ex.: Rodei npm install e npx react-native run-android, mas recebi erro de SDK
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Ambiente
+      description: SO, Node, npm/yarn, Java, Android Studio, Xcode, etc.
+      placeholder: Ex.: Ubuntu 24.04, Node 20, npm 10, Android Studio Iguana
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs ou mensagens de erro
+      description: Cole logs relevantes
+      placeholder: Ex.: saída do terminal, erro do Gradle, Metro bundler
