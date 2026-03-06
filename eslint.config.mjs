@@ -20,6 +20,10 @@ export default [
   {
     files: ["**/*.{ts,tsx,js,jsx}"],
     languageOptions: {
+      globals: {
+        require: "readonly",
+        process: "readonly",
+      },
       parser: tsParser,
       ecmaVersion: "latest",
       sourceType: "module",
