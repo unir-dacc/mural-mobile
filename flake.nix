@@ -27,9 +27,14 @@
             cmdline-tools-latest
             platform-tools
             emulator
+            build-tools-35-0-0
+            platforms-android-35
+            system-images-android-35-google-apis-x86-64
             build-tools-36-0-0
             platforms-android-36
             system-images-android-36-google-apis-x86-64
+            ndk-27-1-12297006
+            cmake-3-22-1
           ]
         );
 
@@ -42,6 +47,8 @@
             jdk17
             git
             watchman
+            ninja
+            python3
             androidSdk
           ];
 
@@ -53,6 +60,7 @@
 
             export ANDROID_USER_HOME="$PWD/.android"
             export ANDROID_AVD_HOME="$PWD/.android/avd"
+            export ANDROID_NDK_ROOT="${androidSdk}/share/android-sdk/ndk/27.1.12297006"
 
             mkdir -p "$ANDROID_AVD_HOME"
 

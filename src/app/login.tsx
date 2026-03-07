@@ -10,6 +10,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Eye, EyeOff } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginScreen() {
@@ -20,6 +21,7 @@ export default function LoginScreen() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,9 +74,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               placeholder="Digite seu identificador"
               placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
-              className={`rounded-xl px-4 py-3 text-base ${
-                isDarkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-              }`}
+              className={`rounded-xl px-4 py-3 text-base ${isDarkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"}`}
             />
           </View>
 
@@ -84,16 +84,25 @@ export default function LoginScreen() {
             >
               Senha
             </Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Digite sua senha"
-              placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
-              className={`rounded-xl px-4 py-3 text-base ${
-                isDarkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-              }`}
-            />
+            <View
+              className={`flex-row items-center rounded-xl px-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                placeholder="Digite sua senha"
+                placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+                className={`flex-1 py-3 text-base ${isDarkMode ? "text-white" : "text-gray-900"}`}
+              />
+              <TouchableOpacity onPress={() => setShowPassword((v) => !v)} className="pl-2">
+                {showPassword ? (
+                  <EyeOff size={20} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+                ) : (
+                  <Eye size={20} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Esqueceu a senha */}
@@ -118,7 +127,6 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Criar conta */}
           <TouchableOpacity
             onPress={() => router.push("/register")}
             className="rounded-xl py-4 items-center justify-center border"

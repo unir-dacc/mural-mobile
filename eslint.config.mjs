@@ -28,6 +28,8 @@ export default [
         require: "readonly",
         process: "readonly",
         fetch: "readonly",
+        clearTimeout: "readonly",
+        setTimeout: "readonly",
       },
       parser: tsParser,
       ecmaVersion: "latest",

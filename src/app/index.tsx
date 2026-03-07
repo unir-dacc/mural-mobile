@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import { View, Text, TouchableOpacity, Image, TextInput } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { User } from "lucide-react-native";
+import { User, Search } from "lucide-react-native";
 import { listAllPosts, getUserById } from "@/api/generated/api";
 import { GetPostDto, GetUserDto, ListAllPostsParams } from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
@@ -44,17 +44,43 @@ export default function HomeScreen() {
   const loadMorePosts = () => {
     if (!loading) setPage((prev) => prev + 1);
   };
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearchSubmit = () => {
+    if (!searchQuery.trim()) {
+      router.push("/search");
+      return;
+    }
+    router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    setSearchQuery("");
+  };
 
   const header = (
     <View className={`px-4 pt-4 pb-4 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
       <Text
-        className={`text-center text-sm leading-6 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+        className={`text-center text-sm leading-6 mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
       >
         Bem-vindo ao mural de fotos do curso de Ciência da Computação da UNIR. Este espaço foi
         criado para compartilhar visualizações, diagramas e projetos relacionados às disciplinas do
         curso. Explore as imagens, comente e interaja com os trabalhos dos seus colegas e
         professores.
       </Text>
+
+      <View
+        className={`flex-row items-center gap-3 px-4 rounded-2xl ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+        style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+      >
+        <Search size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearchSubmit}
+          placeholder="Buscar posts..."
+          placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+          returnKeyType="search"
+          className={`flex-1 py-3 text-sm ${isDarkMode ? "text-white" : "text-gray-900"}`}
+        />
+      </View>
     </View>
   );
 
@@ -64,17 +90,13 @@ export default function HomeScreen() {
       <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
         {/* Top Bar */}
         <View
-          className={`pt-14 px-4 pb-3 flex-row items-center justify-between ${
-            isDarkMode ? "bg-gray-900" : "bg-white"
-          }`}
+          className={`pt-14 px-4 pb-3 flex-row items-center justify-between ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
           style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 3 }}
         >
           <View style={{ width: 36 }} />
-
           <Text className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
             Mural de Fotos
           </Text>
-
           <TouchableOpacity
             onPress={() => router.push("/profile")}
             className="w-9 h-9 rounded-full overflow-hidden items-center justify-center"

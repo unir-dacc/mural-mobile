@@ -46,12 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (dto: LoginDto) => {
-    const { data } = (await loginApi(dto)) as any;
+    const data = (await loginApi(dto)) as any;
     const authUser: AuthUser = { sub: data.sub, email: data.email };
-
     await SecureStore.setItemAsync(TOKEN_KEY, data.accessToken);
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(authUser));
-
     setToken(data.accessToken);
     setUser(authUser);
   };
