@@ -1,41 +1,41 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import "react-native-reanimated";
-import * as SplashScreen from "expo-splash-screen";
-import { useFonts, Inter_400Regular, Inter_700Bold } from "@expo-google-fonts/inter";
-
-import { useColorScheme } from "@/hooks/use-color-scheme";
-
+import React, { useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import "../global.css";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded, error] = useFonts({
-    Inter: Inter_400Regular,
-    "Inter-Bold": Inter_700Bold,
-  });
+function AuthGuard() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded, error]);
+    if (isLoading) return;
 
-  if (!loaded && !error) {
-    return null;
+    const inAuthGroup =
+      segments[0] === "login" || segments[0] === "reset-password" || segments[0] === "register";
+
+    if (!user && !inAuthGroup) {
+      router.replace("/login");
+    } else if (user && inAuthGroup) {
+      router.replace("/");
+    }
+  }, [user, isLoading, segments]);
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
+  return <Slot />;
+}
+
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <AuthGuard />
+    </AuthProvider>
   );
 }

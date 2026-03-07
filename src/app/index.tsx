@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, useColorScheme } from "react-native";
+import { View, Text, TouchableOpacity, Image, useColorScheme } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { User } from "lucide-react-native";
-import { listAllPosts } from "@/api/generated/api";
-import { GetPostDto, ListAllPostsParams } from "@/api/generated/model";
+import { listAllPosts, getUserById } from "@/api/generated/api";
+import { GetPostDto, GetUserDto, ListAllPostsParams } from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
+import { useAuth } from "@/context/AuthContext";
 
 export default function HomeScreen() {
   const [posts, setPosts] = useState<GetPostDto[]>([]);
   const [page, setPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
+  const [profile, setProfile] = useState<GetUserDto | null>(null);
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const router = useRouter();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.sub) return;
+    getUserById(user.sub)
+      .then(({ data }) => setProfile(data))
+      .catch(() => {});
+  }, [user?.sub]);
 
   const fetchPosts = async (pageNumber: number): Promise<void> => {
     if (loading) return;
@@ -59,12 +69,7 @@ export default function HomeScreen() {
           className={`pt-14 px-4 pb-3 flex-row items-center justify-between ${
             isDarkMode ? "bg-gray-900" : "bg-white"
           }`}
-          style={{
-            shadowColor: "#000",
-            shadowOpacity: 0.06,
-            shadowRadius: 4,
-            elevation: 3,
-          }}
+          style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 3 }}
         >
           <View style={{ width: 36 }} />
 
@@ -74,10 +79,17 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             onPress={() => router.push("/profile")}
-            className="w-9 h-9 rounded-full items-center justify-center"
+            className="w-9 h-9 rounded-full overflow-hidden items-center justify-center"
             style={{ backgroundColor: isDarkMode ? "#374151" : "#f3f4f6" }}
           >
-            <User size={20} color={isDarkMode ? "#f9fafb" : "#111827"} />
+            {profile?.avatarUrl ? (
+              <Image
+                source={{ uri: profile.avatarUrl }}
+                style={{ width: 36, height: 36, borderRadius: 999 }}
+              />
+            ) : (
+              <User size={20} color={isDarkMode ? "#f9fafb" : "#111827"} />
+            )}
           </TouchableOpacity>
         </View>
 

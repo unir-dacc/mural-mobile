@@ -64,7 +64,7 @@
             echo "emulator -avd $AVD_NAME"
             echo ""
 
-            if [ -f package.json ]; then
+            if [! -f node_modules ]; then
               npm install
               npx husky
               echo "husky initialized"
