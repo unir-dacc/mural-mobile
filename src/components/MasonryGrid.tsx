@@ -19,9 +19,10 @@ interface MasonryGridProps {
   loading: boolean;
   onLoadMore: () => void;
   onPressItem?: (item: GetPostDto) => void;
+  header?: React.ReactNode;
 }
 
-export function MasonryGrid({ posts, loading, onLoadMore, onPressItem }: MasonryGridProps) {
+export function MasonryGrid({ posts, loading, onLoadMore, onPressItem, header }: MasonryGridProps) {
   const { width: screenWidth } = useWindowDimensions();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
@@ -41,10 +42,12 @@ export function MasonryGrid({ posts, loading, onLoadMore, onPressItem }: Masonry
     columns[i % numColumns].push(post);
   });
 
-  // Primeira carga: sem posts ainda
   if (loading && posts.length === 0) {
     return (
-      <SkeletonGrid numColumns={numColumns} columnWidth={columnWidth} count={numColumns * 4} />
+      <>
+        {header}
+        <SkeletonGrid numColumns={numColumns} columnWidth={columnWidth} count={numColumns * 4} />
+      </>
     );
   }
 
@@ -52,10 +55,8 @@ export function MasonryGrid({ posts, loading, onLoadMore, onPressItem }: Masonry
     <ScrollView
       contentContainerStyle={{
         paddingHorizontal: HORIZONTAL_PADDING,
-        paddingVertical: HORIZONTAL_PADDING,
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: COLUMN_GAP,
+        paddingBottom: HORIZONTAL_PADDING,
+        flexDirection: "column",
       }}
       onScroll={({ nativeEvent }) => {
         const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
@@ -65,42 +66,48 @@ export function MasonryGrid({ posts, loading, onLoadMore, onPressItem }: Masonry
       scrollEventThrottle={400}
       showsVerticalScrollIndicator={false}
     >
-      {columns.map((columnPosts, colIndex) => (
-        <View key={colIndex} style={{ width: columnWidth }}>
-          {columnPosts.map((item) => (
-            <PhotoItem key={item.id} item={item} columnWidth={columnWidth} onPress={onPressItem} />
-          ))}
+      {/* Header scrolla junto com o grid */}
+      {header}
 
-          {/* Skeleton de paginação: adiciona cards fantasma na última coluna */}
-          {loading &&
-            colIndex === 0 &&
-            Array.from({ length: 2 }).map((_, i) => (
-              <View
-                key={`skel-${i}`}
-                style={{
-                  height: 180 + i * 60,
-                  borderRadius: 12,
-                  marginBottom: 8,
-                  backgroundColor: isDarkMode ? "#2a2a2a" : "#e0e0e0",
-                  opacity: 0.6,
-                }}
+      {/* Grid */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "flex-start",
+          gap: COLUMN_GAP,
+          paddingTop: HORIZONTAL_PADDING,
+        }}
+      >
+        {columns.map((columnPosts, colIndex) => (
+          <View key={colIndex} style={{ width: columnWidth }}>
+            {columnPosts.map((item) => (
+              <PhotoItem
+                key={item.id}
+                item={item}
+                columnWidth={columnWidth}
+                onPress={onPressItem}
               />
             ))}
-        </View>
-      ))}
+            {loading &&
+              colIndex === 0 &&
+              Array.from({ length: 2 }).map((_, i) => (
+                <View
+                  key={`skel-${i}`}
+                  style={{
+                    height: 180 + i * 60,
+                    borderRadius: 12,
+                    marginBottom: 8,
+                    backgroundColor: isDarkMode ? "#2a2a2a" : "#e0e0e0",
+                    opacity: 0.6,
+                  }}
+                />
+              ))}
+          </View>
+        ))}
+      </View>
 
-      {/* Indicador discreto de load more */}
       {loading && posts.length > 0 && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 24,
-            alignSelf: "center",
-            left: 0,
-            right: 0,
-            alignItems: "center",
-          }}
-        >
+        <View style={{ alignItems: "center", paddingVertical: 16 }}>
           <ActivityIndicator size="small" color={isDarkMode ? "#ffffff88" : "#00000055"} />
         </View>
       )}

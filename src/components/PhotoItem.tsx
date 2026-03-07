@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
-import { Video } from "expo-av";
+import { Play } from "lucide-react-native";
 import { Heart, MessageCircle, Image as ImageIcon } from "lucide-react-native";
 import { GetPostDto } from "@/api/generated/model";
-
-const COLUMN_GAP = 8;
-const HORIZONTAL_PADDING = 16;
 
 interface PhotoItemProps {
   item: GetPostDto;
@@ -16,12 +13,12 @@ interface PhotoItemProps {
 export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
   const [height, setHeight] = useState<number>(columnWidth * 1.33);
 
-  useEffect(() => {
-    const url = item.Media?.[0]?.imageUrl;
-    if (!url) return;
+  const thumbnailUrl = item.thumbnailUrl ?? item.Media?.[0]?.imageUrl;
 
+  useEffect(() => {
+    if (!thumbnailUrl) return;
     Image.getSize(
-      url,
+      thumbnailUrl,
       (w, h) => {
         setHeight(columnWidth * (h / w));
       },
@@ -29,7 +26,7 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
         setHeight(columnWidth * 1.33);
       }
     );
-  }, [item.id, columnWidth]);
+  }, [item.id, columnWidth, thumbnailUrl]);
 
   return (
     <TouchableOpacity
@@ -38,21 +35,22 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
       className="mb-2 rounded-xl overflow-hidden"
     >
       <View style={{ height, width: columnWidth }}>
-        {item.isVideo ? (
-          <Video
-            source={{ uri: item.Media![0].imageUrl }}
-            style={{ width: columnWidth, height }}
-            useNativeControls={false}
-            isMuted={true}
-            shouldPlay={false}
-            isLooping={false}
-          />
-        ) : (
-          <Image
-            source={{ uri: item.Media![0].imageUrl }}
-            style={{ width: columnWidth, height }}
-            resizeMode="cover"
-          />
+        {/* Vídeos e imagens usam thumbnail — mais leve */}
+        <Image
+          source={{ uri: thumbnailUrl }}
+          style={{ width: columnWidth, height }}
+          resizeMode="cover"
+        />
+
+        {item.isVideo && (
+          <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
+            <View
+              style={{ backgroundColor: "rgba(0,0,0,0.35)", borderRadius: 999 }}
+              className="w-10 h-10 items-center justify-center"
+            >
+              <Play size={18} color="white" fill="white" />
+            </View>
+          </View>
         )}
 
         <View
@@ -66,14 +64,12 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
                 {item._count?.likes ?? 0}
               </Text>
             </View>
-
             <View className="flex-row items-center" style={{ gap: 3 }}>
               <MessageCircle size={13} color="white" />
               <Text className="text-white" style={{ fontSize: 11 }}>
                 {item._count?.comments ?? 0}
               </Text>
             </View>
-
             <View className="flex-row items-center" style={{ gap: 3 }}>
               <ImageIcon size={13} color="white" />
               <Text className="text-white" style={{ fontSize: 11 }}>
