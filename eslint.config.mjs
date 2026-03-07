@@ -27,6 +27,7 @@ export default [
       globals: {
         require: "readonly",
         process: "readonly",
+        fetch: "readonly",
       },
       parser: tsParser,
       ecmaVersion: "latest",

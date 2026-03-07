@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, useColorScheme } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { User } from "lucide-react-native";
@@ -7,21 +7,21 @@ import { listAllPosts, getUserById } from "@/api/generated/api";
 import { GetPostDto, GetUserDto, ListAllPostsParams } from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function HomeScreen() {
   const [posts, setPosts] = useState<GetPostDto[]>([]);
   const [page, setPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [profile, setProfile] = useState<GetUserDto | null>(null);
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
+  const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user?.sub) return;
     getUserById(user.sub)
-      .then(({ data }) => setProfile(data))
+      .then((data) => setProfile(data))
       .catch(() => {});
   }, [user?.sub]);
 
@@ -30,8 +30,8 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const params: ListAllPostsParams = { page: pageNumber, limit: 10 };
-      const { data: response } = await listAllPosts(params);
-      setPosts((prev) => [...prev, ...response.data]);
+      const { data } = await listAllPosts(params);
+      setPosts((prev) => [...prev, ...data]);
     } finally {
       setLoading(false);
     }
@@ -44,8 +44,6 @@ export default function HomeScreen() {
   const loadMorePosts = () => {
     if (!loading) setPage((prev) => prev + 1);
   };
-
-  const handlePressItem = () => {};
 
   const header = (
     <View className={`px-4 pt-4 pb-4 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
@@ -97,7 +95,7 @@ export default function HomeScreen() {
           posts={posts}
           loading={loading}
           onLoadMore={loadMorePosts}
-          onPressItem={handlePressItem}
+          onPressItem={(item: GetPostDto) => router.push(`/post/${item.id}`)}
           header={header}
         />
       </View>
