@@ -60,7 +60,7 @@ export function MasonryGrid({ posts, loading, onLoadMore, onPressItem, header }:
       }}
       onScroll={({ nativeEvent }) => {
         const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-        const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 300;
+        const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 150;
         if (isNearBottom) onLoadMore();
       }}
       scrollEventThrottle={400}

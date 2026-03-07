@@ -29,7 +29,7 @@ export default function HomeScreen() {
     if (loading) return;
     setLoading(true);
     try {
-      const params: ListAllPostsParams = { page: pageNumber, limit: 10 };
+      const params: ListAllPostsParams = { page: pageNumber, limit: 20 };
       const { data } = await listAllPosts(params);
       setPosts((prev) => [...prev, ...data]);
     } finally {
