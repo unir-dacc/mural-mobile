@@ -2,7 +2,17 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Search, SlidersHorizontal, X } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Search,
+  SlidersHorizontal,
+  X,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Clock,
+  Heart,
+  MessageCircle,
+} from "lucide-react-native";
 import { listAllPosts } from "@/api/generated/api";
 import {
   GetPaginatedPostDtoDataItem,
@@ -17,17 +27,6 @@ type Filters = {
   orderBy: ListAllPostsOrderBy;
 };
 
-const ORDER_OPTIONS: { label: string; value: ListAllPostsOrder }[] = [
-  { label: "Decrescente", value: "desc" },
-  { label: "Crescente", value: "asc" },
-];
-
-const ORDER_BY_OPTIONS: { label: string; value: ListAllPostsOrderBy }[] = [
-  { label: "Data de criação", value: "createdAt" },
-  { label: "Likes", value: "likes" },
-  { label: "Comentarios", value: "comments" },
-];
-
 export default function SearchScreen() {
   const { isDarkMode } = useTheme();
   const router = useRouter();
@@ -41,6 +40,19 @@ export default function SearchScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  const iconColor = (active: boolean) => (active ? "white" : isDarkMode ? "#9ca3af" : "#6b7280");
+
+  const orderIcons = {
+    desc: (active: boolean) => <ArrowDownAZ size={14} color={iconColor(active)} />,
+    asc: (active: boolean) => <ArrowUpAZ size={14} color={iconColor(active)} />,
+  };
+
+  const orderByIcons = {
+    createdAt: (active: boolean) => <Clock size={14} color={iconColor(active)} />,
+    likes: (active: boolean) => <Heart size={14} color={iconColor(active)} />,
+    comments: (active: boolean) => <MessageCircle size={14} color={iconColor(active)} />,
+  };
 
   const fetchPosts = useCallback(async (q: string, f: Filters, pageNumber: number) => {
     setLoading(true);
@@ -63,12 +75,10 @@ export default function SearchScreen() {
     }
   }, []);
 
-  // Busca inicial com o q da URL
   useEffect(() => {
     fetchPosts(query, filters, 1);
   }, []);
 
-  // Debounce quando query ou filtros mudam (após mount)
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -135,9 +145,7 @@ export default function SearchScreen() {
 
             <TouchableOpacity
               onPress={() => setShowFilters((v) => !v)}
-              className={`w-9 h-9 rounded-xl items-center justify-center ${
-                showFilters ? "bg-indigo-600" : isDarkMode ? "bg-gray-700" : "bg-gray-100"
-              }`}
+              className={`w-9 h-9 rounded-xl items-center justify-center ${showFilters ? "bg-indigo-600" : isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
             >
               <SlidersHorizontal
                 size={18}
@@ -148,7 +156,8 @@ export default function SearchScreen() {
 
           {/* Filtros */}
           {showFilters && (
-            <View className="gap-3 pt-1 pb-1">
+            <View className="gap-4 pt-1 pb-1">
+              {/* Ordem */}
               <View>
                 <Text
                   className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
@@ -156,30 +165,28 @@ export default function SearchScreen() {
                   Ordem
                 </Text>
                 <View className="flex-row gap-2">
-                  {ORDER_OPTIONS.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => applyFilter("order", opt.value)}
-                      className={`px-3 py-1.5 rounded-full border ${
-                        filters.order === opt.value
-                          ? "bg-indigo-600 border-indigo-600"
-                          : isDarkMode
-                            ? "border-gray-600"
-                            : "border-gray-300"
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-medium ${
-                          filters.order === opt.value ? "text-white" : textPrimary
-                        }`}
+                  {(["desc", "asc"] as ListAllPostsOrder[]).map((value) => {
+                    const active = filters.order === value;
+                    const label = value === "desc" ? "Decrescente" : "Crescente";
+                    return (
+                      <TouchableOpacity
+                        key={value}
+                        onPress={() => applyFilter("order", value)}
+                        className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
                       >
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        {orderIcons[value](active)}
+                        <Text
+                          className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
+              {/* Ordenar por */}
               <View>
                 <Text
                   className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
@@ -187,27 +194,24 @@ export default function SearchScreen() {
                   Ordenar por
                 </Text>
                 <View className="flex-row gap-2">
-                  {ORDER_BY_OPTIONS.map((opt) => (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => applyFilter("orderBy", opt.value)}
-                      className={`px-3 py-1.5 rounded-full border ${
-                        filters.orderBy === opt.value
-                          ? "bg-indigo-600 border-indigo-600"
-                          : isDarkMode
-                            ? "border-gray-600"
-                            : "border-gray-300"
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-medium ${
-                          filters.orderBy === opt.value ? "text-white" : textPrimary
-                        }`}
+                  {(["createdAt", "likes", "comments"] as ListAllPostsOrderBy[]).map((value) => {
+                    const active = filters.orderBy === value;
+                    const labels = { createdAt: "Data", likes: "Likes", comments: "Comentários" };
+                    return (
+                      <TouchableOpacity
+                        key={value}
+                        onPress={() => applyFilter("orderBy", value)}
+                        className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
                       >
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        {orderByIcons[value](active)}
+                        <Text
+                          className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}
+                        >
+                          {labels[value]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             </View>
