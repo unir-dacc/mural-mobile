@@ -59,19 +59,6 @@
             AVD_NAME="expo-avd"
             IMAGE="system-images;android-36;google_apis;x86_64"
 
-            if ! emulator -list-avds | grep -q "$AVD_NAME"; then
-              echo "Criando AVD $AVD_NAME..."
-
-              echo "no" | avdmanager create avd \
-                -n "$AVD_NAME" \
-                -k "$IMAGE" \
-                -d pixel_6 || true
-
-              echo "AVD criado."
-            else
-              echo "AVD $AVD_NAME já existe."
-            fi
-
             echo ""
             echo "Para iniciar o emulador:"
             echo "emulator -avd $AVD_NAME"
