@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import "../global.css";
 
 function AuthGuard() {
@@ -11,7 +12,6 @@ function AuthGuard() {
 
   useEffect(() => {
     if (isLoading) return;
-
     const inAuthGroup =
       segments[0] === "login" || segments[0] === "reset-password" || segments[0] === "register";
 
@@ -21,6 +21,7 @@ function AuthGuard() {
       router.replace("/");
     }
   }, [user, isLoading, segments]);
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -34,8 +35,10 @@ function AuthGuard() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <AuthGuard />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AuthGuard />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
