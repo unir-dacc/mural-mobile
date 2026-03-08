@@ -30,6 +30,7 @@ export default [
         fetch: "readonly",
         clearTimeout: "readonly",
         setTimeout: "readonly",
+        FormData: "readonly",
       },
       parser: tsParser,
       ecmaVersion: "latest",

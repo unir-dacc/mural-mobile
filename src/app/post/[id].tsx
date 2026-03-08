@@ -12,7 +12,6 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Animated,
-  Easing,
   ActivityIndicator,
   Modal,
   StatusBar as RNStatusBar,
@@ -27,6 +26,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from "lucide-react-native";
 import { Video, ResizeMode } from "expo-av";
 import {
@@ -42,75 +42,9 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
+import { PostSkeleton, SkeletonPulse } from "@/components/PostSkeleton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// ─────────────────────────────────────────────
-// Skeleton
-// ─────────────────────────────────────────────
-
-const SkeletonPulse: React.FC<{ style?: object; className?: string }> = ({ style, className }) => {
-  const opacity = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.4,
-          duration: 800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [opacity]);
-
-  return <Animated.View style={[{ opacity }, style]} className={className} />;
-};
-
-const PostSkeleton: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
-  const base = isDarkMode ? "bg-gray-700" : "bg-gray-200";
-  return (
-    <View>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 gap-3">
-        <SkeletonPulse className={`w-10 h-10 rounded-full ${base}`} />
-        <SkeletonPulse className={`h-3 w-32 rounded-full ${base}`} />
-      </View>
-      {/* Image */}
-      <SkeletonPulse className={base} style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }} />
-      {/* Actions */}
-      <View className="flex-row items-center px-4 pt-4 pb-2 gap-4">
-        <SkeletonPulse className={`w-7 h-7 rounded-full ${base}`} />
-        <SkeletonPulse className={`w-7 h-7 rounded-full ${base}`} />
-      </View>
-      {/* Like count */}
-      <SkeletonPulse className={`mx-4 h-3 w-20 rounded-full mb-3 ${base}`} />
-      {/* Caption lines */}
-      <SkeletonPulse className={`mx-4 h-3 w-3/4 rounded-full mb-2 ${base}`} />
-      <SkeletonPulse className={`mx-4 h-3 w-1/2 rounded-full mb-4 ${base}`} />
-      {/* Comment rows */}
-      {[0, 1, 2].map((i) => (
-        <View key={i} className="flex-row items-center px-4 gap-3 mb-3">
-          <SkeletonPulse className={`w-8 h-8 rounded-full ${base}`} />
-          <SkeletonPulse className={`h-3 rounded-full ${base}`} style={{ flex: 1 }} />
-        </View>
-      ))}
-    </View>
-  );
-};
-
-// ─────────────────────────────────────────────
-// Full-screen image viewer modal
-// ─────────────────────────────────────────────
 
 interface ImageViewerModalProps {
   images: { id: string; imageUrl: string }[];
@@ -422,7 +356,7 @@ function usePostDetail(id: string | undefined) {
       getPostById(id),
       commentsControllerGetComments(id),
       likesControllerLiked(id)
-        .then(() => true)
+        .then((res: any) => !!res)
         .catch(() => false),
     ])
       .then(([postRes, commentsRes, isLiked]) => {
@@ -489,6 +423,9 @@ export default function PostDetailScreen() {
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const fabAnim = useRef(new Animated.Value(1)).current;
+  const lastScrollY = useRef(0);
+  const fabVisible = useRef(true);
 
   const { post, comments, liked, likeCount, loading, commenting, handleLike, handleComment } =
     usePostDetail(id);
@@ -505,10 +442,38 @@ export default function PostDetailScreen() {
     [imageList]
   );
 
-  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleCarouselScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     setMediaIndex(index);
   }, []);
+
+  const handleVerticalScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const currentY = e.nativeEvent.contentOffset.y;
+      const diff = currentY - lastScrollY.current;
+      lastScrollY.current = currentY;
+
+      // scrolling down → hide FAB; scrolling up → show FAB
+      if (diff > 4 && fabVisible.current) {
+        fabVisible.current = false;
+        Animated.spring(fabAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          speed: 20,
+          bounciness: 4,
+        }).start();
+      } else if (diff < -4 && !fabVisible.current) {
+        fabVisible.current = true;
+        Animated.spring(fabAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          speed: 20,
+          bounciness: 8,
+        }).start();
+      }
+    },
+    [fabAnim]
+  );
 
   const onCommentSubmit = useCallback(() => {
     handleComment(commentText, () => setCommentText(""));
@@ -546,7 +511,11 @@ export default function PostDetailScreen() {
       >
         <TopBar title="Post" />
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          onScroll={handleVerticalScroll}
+          scrollEventThrottle={16}
+        >
           {/* ── Post header ── */}
           <View className="flex-row items-center px-4 py-3 gap-3">
             <UserAvatar
@@ -569,7 +538,7 @@ export default function PostDetailScreen() {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={handleScroll}
+              onMomentumScrollEnd={handleCarouselScroll}
             >
               {mediaList.map((media) => (
                 <MediaItem
@@ -661,6 +630,39 @@ export default function PostDetailScreen() {
         </View>
       </KeyboardAvoidingView>
 
+      {/* ── FAB: novo post ── */}
+      <Animated.View
+        style={{
+          position: "absolute",
+          bottom: 96,
+          right: 20,
+          opacity: fabAnim,
+          transform: [{ scale: fabAnim }],
+        }}
+        pointerEvents={fabVisible.current ? "auto" : "none"}
+      >
+        <TouchableOpacity
+          onPress={() => router.push("/post/create")}
+          activeOpacity={0.85}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: "#4f46e5",
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: "#4f46e5",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.45,
+            shadowRadius: 10,
+            elevation: 8,
+          }}
+        >
+          <Plus size={26} color="#fff" strokeWidth={2.5} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* ── Full-screen image viewer ── */}
       <ImageViewerModal
         images={imageList}
         initialIndex={viewerIndex}

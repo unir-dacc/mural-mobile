@@ -19,10 +19,18 @@ interface MasonryGridProps {
   loading: boolean;
   onLoadMore: () => void;
   onPressItem?: (item: GetPostDto) => void;
+  onScroll?: (offsetY: number) => void;
   header?: React.ReactNode;
 }
 
-export function MasonryGrid({ posts, loading, onLoadMore, onPressItem, header }: MasonryGridProps) {
+export function MasonryGrid({
+  posts,
+  loading,
+  onLoadMore,
+  onPressItem,
+  onScroll,
+  header,
+}: MasonryGridProps) {
   const { width: screenWidth } = useWindowDimensions();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
@@ -60,16 +68,18 @@ export function MasonryGrid({ posts, loading, onLoadMore, onPressItem, header }:
       }}
       onScroll={({ nativeEvent }) => {
         const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-        const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 150;
+
+        onScroll?.(contentOffset.y);
+
+        const isNearBottom =
+          layoutMeasurement.height + contentOffset.y >= contentSize.height - 1000;
         if (isNearBottom) onLoadMore();
       }}
-      scrollEventThrottle={400}
+      scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header scrolla junto com o grid */}
       {header}
 
-      {/* Grid */}
       <View
         style={{
           flexDirection: "row",

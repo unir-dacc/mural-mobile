@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Image, TextInput } from "react-native";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { View, Text, TouchableOpacity, Image, TextInput, Animated } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { User, Search } from "lucide-react-native";
+import { User, Search, Plus } from "lucide-react-native";
 import { listAllPosts, getUserById } from "@/api/generated/api";
 import { GetPostDto, GetUserDto, ListAllPostsParams } from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
@@ -14,9 +14,36 @@ export default function HomeScreen() {
   const [page, setPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [profile, setProfile] = useState<GetUserDto | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
+
+  // ── FAB scroll-aware visibility ──
+  const fabAnim = useRef(new Animated.Value(1)).current as any;
+  const lastScrollY = useRef(0);
+
+  const handleScroll = useCallback(
+    (offsetY: number) => {
+      const diff = offsetY - lastScrollY.current;
+      lastScrollY.current = offsetY;
+
+      // Don't hide near the top
+      if (offsetY < 60) {
+        Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
+        return;
+      }
+
+      if (diff > 4) {
+        // Scrolling down → hide
+        Animated.spring(fabAnim, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+      } else if (diff < -4) {
+        // Scrolling up → show
+        Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
+      }
+    },
+    [fabAnim]
+  );
 
   useEffect(() => {
     if (!user?.sub) return;
@@ -44,7 +71,6 @@ export default function HomeScreen() {
   const loadMorePosts = () => {
     if (!loading) setPage((prev) => prev + 1);
   };
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearchSubmit = () => {
     if (!searchQuery.trim()) {
@@ -88,7 +114,7 @@ export default function HomeScreen() {
     <>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
-        {/* Top Bar */}
+        {/* ── Top Bar ── */}
         <View
           className={`pt-14 px-4 pb-3 flex-row items-center justify-between ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
           style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 3 }}
@@ -113,13 +139,54 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* ── Feed ── */}
         <MasonryGrid
           posts={posts}
           loading={loading}
           onLoadMore={loadMorePosts}
           onPressItem={(item: GetPostDto) => router.push(`/post/${item.id}`)}
+          onScroll={handleScroll}
           header={header}
         />
+
+        {/* ── Floating Action Button ── */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            bottom: 28,
+            right: 20,
+            opacity: fabAnim,
+            transform: [
+              {
+                scale: fabAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.7, 1],
+                }),
+              },
+            ],
+          }}
+          pointerEvents={fabAnim === 0 ? "none" : "auto"}
+        >
+          <TouchableOpacity
+            onPress={() => router.push("/post/create")}
+            activeOpacity={0.85}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              backgroundColor: "#4f46e5",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#4f46e5",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.45,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            <Plus size={26} color="#fff" strokeWidth={2.5} />
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </>
   );
