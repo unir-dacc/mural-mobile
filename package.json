@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "prepare": "husky",
-    "generate:api": "npx orval --config ./orval.config.ts"
+    "generate:api": "npx orval --config ./orval.config.js"
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx}": [
