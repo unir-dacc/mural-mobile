@@ -4,7 +4,7 @@
 </p>
 
 <h1 align="center">
-[NOME DO PROJETO]
+Mural Mobile
 </h1>
 
 <p align="center">
@@ -32,17 +32,9 @@ Descreva aqui o objetivo principal do projeto.
 
 ---
 
-## 👥 Equipe
-
-- **Responsável:**
-- **Colaboradores:**
-
----
-
 ## 📂 Estrutura do repositório
 
 ```
-docs/          → documentação e relatórios
 src/           → código-fonte
 flake.nix      → ambiente de desenvolvimento reproduzível
 README.md      → visão geral do projeto
@@ -112,12 +104,6 @@ Use o gerenciador definido pelo projeto:
 npm install
 ```
 
-ou
-
-```bash
-pnpm install
-```
-
 ### 5. Executar o projeto Expo
 
 Inicie o servidor de desenvolvimento:
@@ -136,8 +122,7 @@ npx expo run:android
 
 ```bash
 nix develop
-emulator -avd expo-avd
-npx expo start
+npm run android
 ```
 
 ---
