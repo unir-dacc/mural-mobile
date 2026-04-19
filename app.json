@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Receba notificações sobre curtidas e comentários nos seus posts."
+      },
+      "bundleIdentifier": "com.unirdacc.muralmobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +25,9 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "useCleartextTraffic": true,
-      "package": "com.ecotechamazonia.muralmobile"
+      "package": "com.unirdacc.muralmobile",
+      "useNextNotificationsApi": true,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -30,6 +36,16 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#4f46e5",
+          "defaultChannel": "default",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -47,6 +63,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "93dc59f3-5b69-4ecf-a853-56a0508efa06"
+      }
+    },
+    "owner": "ricardo-cpu"
   }
 }
