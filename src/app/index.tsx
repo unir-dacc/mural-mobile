@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, Image, TextInput, Animated } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, Animated } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   User,
   Search,
@@ -13,17 +13,22 @@ import {
   Heart,
   MessageCircle,
 } from "lucide-react-native";
-import { listAllPosts, getUserById } from "@/api/generated/api";
+import { listAllPosts, getUserById, listStories } from "@/api/generated/api";
 import {
   GetPostDto,
   GetUserDto,
   ListAllPostsParams,
   ListAllPostsOrder,
   ListAllPostsOrderBy,
+  StoryListDtoItem,
 } from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
+import { StoryStrip } from "@/components/StoryStrip";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { setCachedStory } from "@/services/storyCache";
+import { CachedImage } from "@/components/CachedImage";
+import { warmLatestStoriesMediaCache, warmPostsMediaCache } from "@/services/mediaCache";
 
 type Filters = {
   order: ListAllPostsOrder;
@@ -36,6 +41,8 @@ export default function HomeScreen() {
   const [page, setPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [profile, setProfile] = useState<GetUserDto | null>(null);
+  const [stories, setStories] = useState<StoryListDtoItem[]>([]);
+  const [loadingStories, setLoadingStories] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Filters>({
     order: ListAllPostsOrder.desc,
@@ -77,6 +84,25 @@ export default function HomeScreen() {
       .catch(() => {});
   }, [user?.sub]);
 
+  const fetchStories = useCallback(async () => {
+    setLoadingStories(true);
+    try {
+      const data = await listStories();
+      setStories(data ?? []);
+    } catch {
+      setStories([]);
+    } finally {
+      setLoadingStories(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void warmLatestStoriesMediaCache();
+      fetchStories();
+    }, [fetchStories])
+  );
+
   const fetchPosts = async (pageNumber: number, f: Filters): Promise<void> => {
     if (loading) return;
     setLoading(true);
@@ -90,6 +116,7 @@ export default function HomeScreen() {
       };
       const { data } = await listAllPosts(params);
       setPosts((prev) => (pageNumber === 1 ? data : [...prev, ...data]));
+      warmPostsMediaCache(data);
     } finally {
       setLoading(false);
     }
@@ -123,14 +150,22 @@ export default function HomeScreen() {
 
   const header = (
     <View className={`px-4 pt-4 pb-4 gap-3 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
-      <Text
-        className={`text-center text-sm leading-6 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-      >
-        Bem-vindo ao mural de fotos do curso de Ciência da Computação da UNIR. Este espaço foi
-        criado para compartilhar visualizações, diagramas e projetos relacionados às disciplinas do
-        curso. Explore as imagens, comente e interaja com os trabalhos dos seus colegas e
-        professores.
-      </Text>
+      {stories.length > 0 ? (
+        <StoryStrip
+          stories={stories}
+          loading={loadingStories}
+          onPressStory={(story) => router.push(`/story/${story.id}`)}
+        />
+      ) : (
+        <Text
+          className={`text-center text-sm leading-6 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+        >
+          Bem-vindo ao mural de fotos do curso de Ciência da Computação da UNIR. Este espaço foi
+          criado para compartilhar visualizações, diagramas e projetos relacionados às disciplinas
+          do curso. Explore as imagens, comente e interaja com os trabalhos dos seus colegas e
+          professores.
+        </Text>
+      )}
 
       {/* Search + filter button */}
       <View className="flex-row items-center gap-2">
@@ -271,8 +306,8 @@ export default function HomeScreen() {
             style={{ backgroundColor: isDarkMode ? "#374151" : "#f3f4f6" }}
           >
             {profile?.avatarUrl ? (
-              <Image
-                source={{ uri: profile.avatarUrl }}
+              <CachedImage
+                uri={profile.avatarUrl}
                 style={{ width: 36, height: 36, borderRadius: 999 }}
               />
             ) : (

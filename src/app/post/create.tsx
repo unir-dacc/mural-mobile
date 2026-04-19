@@ -13,7 +13,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import {
   X,
   ImagePlus,
@@ -25,7 +25,8 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { TopBar } from "@/components/TopBar";
-import { api } from "@/api/axios";
+import { createPost } from "@/api/generated/api";
+import type { CreatePostBody } from "@/api/generated/model/createPostBody";
 
 // ─────────────────────────────────────────────
 // Types
@@ -54,6 +55,19 @@ interface MediaCardProps {
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
 }
+
+const MediaVideoPreview: React.FC<{ uri: string }> = ({ uri }) => {
+  const player = useVideoPlayer(uri);
+
+  return (
+    <VideoView
+      player={player}
+      style={{ width: "100%", height: 192 }}
+      contentFit="contain"
+      nativeControls
+    />
+  );
+};
 
 const MediaCard: React.FC<MediaCardProps> = ({
   media,
@@ -154,13 +168,7 @@ const MediaCard: React.FC<MediaCardProps> = ({
       {/* Media preview */}
       <View className="h-48">
         {isVideo ? (
-          <Video
-            source={{ uri: media.uri }}
-            style={{ width: "100%", height: 192 }}
-            resizeMode={ResizeMode.CONTAIN}
-            useNativeControls
-            shouldPlay={false}
-          />
+          <MediaVideoPreview uri={media.uri} />
         ) : (
           <Image
             source={{ uri: media.uri }}
@@ -225,7 +233,7 @@ export default function CreatePostScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ["images", "videos"],
       allowsMultipleSelection: true,
       quality: 0.85,
       orderedSelection: true,
@@ -282,26 +290,21 @@ export default function CreatePostScreen() {
 
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("caption", caption.trim());
-      formData.append("public", String(isPublic));
+      const body: CreatePostBody = {
+        caption: caption.trim(),
+        public: isPublic,
+        media: mediaList.map((media) => {
+          const ext = media.uri.split(".").pop() ?? "jpg";
+          const mime = media.mimeType ?? (media.type === "video" ? "video/mp4" : "image/jpeg");
+          return {
+            uri: media.uri,
+            name: media.fileName ?? `media_${media.id}.${ext}`,
+            type: mime,
+          } as unknown as Blob;
+        }),
+      };
 
-      mediaList.forEach((media) => {
-        const ext = media.uri.split(".").pop() ?? "jpg";
-        const mime = media.mimeType ?? (media.type === "video" ? "video/mp4" : "image/jpeg");
-        formData.append("media", {
-          uri: media.uri,
-          name: media.fileName ?? `media_${media.id}.${ext}`,
-          type: mime,
-        } as any);
-      });
-
-      await api<void>({
-        url: "http://computacao.unir.br/mural/api/posts",
-        method: "POST",
-        headers: { "Content-Type": "multipart/form-data" },
-        data: formData,
-      });
+      await createPost(body);
 
       router.back();
     } catch {

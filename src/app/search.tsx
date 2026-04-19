@@ -23,6 +23,7 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { MasonryGrid } from "@/components/MasonryGrid";
+import { warmPostsMediaCache } from "@/services/mediaCache";
 
 type Filters = {
   order: ListAllPostsOrder;
@@ -76,6 +77,7 @@ export default function SearchScreen() {
       const newPosts = data.data ?? [];
       if (pageNumber === 1) setPosts(newPosts);
       else setPosts((prev) => [...prev, ...newPosts]);
+      warmPostsMediaCache(newPosts);
       setHasMore(data.meta.currentPage < data.meta.lastPage);
     } catch {
       //
