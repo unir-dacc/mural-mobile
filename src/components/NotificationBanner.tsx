@@ -1,7 +1,6 @@
 // components/NotificationBanner.tsx
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { CachedImage } from "@/components/CachedImage";
+import { View, Text, Image, StyleSheet } from "react-native";
 
 type Props = {
   title: string;
@@ -12,7 +11,7 @@ type Props = {
 export function NotificationBanner({ title, body, imageUrl }: Props) {
   return (
     <View style={styles.container}>
-      <CachedImage uri={imageUrl} style={styles.image} />
+      <Image source={{ uri: imageUrl }} style={styles.image} />
       <View style={styles.textContainer}>
         <Text style={styles.title}>{title}</Text>
         <Text>{body}</Text>

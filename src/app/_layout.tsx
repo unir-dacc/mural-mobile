@@ -9,7 +9,6 @@ import { useNotificationSetup } from "@/hooks/useNotificationSetup";
 import "../global.css";
 import { getNotificationImage } from "@/services/notifications";
 import { NotificationBanner } from "@/components/NotificationBanner";
-import { syncAllMuralMediaCache } from "@/services/mediaCache";
 
 // Configuração de notificações push
 Notifications.setNotificationHandler({
@@ -82,11 +81,6 @@ function AuthGuard() {
       return () => clearTimeout(timer);
     }
   }, [banner, setBanner]);
-
-  useEffect(() => {
-    if (!user) return;
-    void syncAllMuralMediaCache();
-  }, [user]);
 
   if (isLoading) {
     return (

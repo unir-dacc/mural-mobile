@@ -1,7 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
-import { CachedImage } from "@/components/CachedImage";
 
 interface UserAvatarProps {
   name?: string;
@@ -26,7 +25,7 @@ export function UserAvatar({ name, avatarUrl, size = "md", onPress }: UserAvatar
       className={`${s.container} rounded-full overflow-hidden items-center justify-center ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
     >
       {avatarUrl ? (
-        <CachedImage uri={avatarUrl} style={{ width: s.size, height: s.size }} />
+        <Image source={{ uri: avatarUrl }} style={{ width: s.size, height: s.size }} />
       ) : (
         <Text className={`${s.text} font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
           {name?.[0]?.toUpperCase() ?? "?"}

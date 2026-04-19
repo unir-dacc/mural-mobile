@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   TextInput,
@@ -50,8 +51,6 @@ import { useAuth } from "@/context/AuthContext";
 import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { PostSkeleton, SkeletonPulse } from "@/components/PostSkeleton";
-import { CachedImage } from "@/components/CachedImage";
-import { useCachedMediaUri, warmPostsMediaCache } from "@/services/mediaCache";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -161,8 +160,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
               key={img.id}
               style={{ width: W, height: H, justifyContent: "center", alignItems: "center" }}
             >
-              <CachedImage
-                uri={img.imageUrl}
+              <Image
+                source={{ uri: img.imageUrl }}
                 style={{ width: W, height: H }}
                 resizeMode="contain"
               />
@@ -248,8 +247,7 @@ interface MediaItemProps {
 }
 
 const PostVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
-  const cachedUri = useCachedMediaUri(uri);
-  const player = useVideoPlayer(cachedUri ? { uri: cachedUri, useCaching: true } : null);
+  const player = useVideoPlayer(uri);
 
   return (
     <VideoView
@@ -264,7 +262,6 @@ const PostVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
 const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const cachedUri = useCachedMediaUri(media.imageUrl);
 
   const onLoad = useCallback(() => {
     setImageLoaded(true);
@@ -300,7 +297,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
             />
           )}
           <Animated.Image
-            source={{ uri: cachedUri }}
+            source={{ uri: media.imageUrl }}
             style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH, opacity: fadeAnim }}
             resizeMode="cover"
             onLoad={onLoad}
@@ -384,7 +381,6 @@ function usePostDetail(id: string | undefined) {
         setLikeCount(postRes._count.likes);
         setComments(commentsRes);
         setLiked(isLiked as boolean);
-        warmPostsMediaCache([postRes]);
       })
       .finally(() => setLoading(false));
   }, [id]);

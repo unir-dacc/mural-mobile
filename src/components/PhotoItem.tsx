@@ -3,8 +3,6 @@ import { View, Text, Image, TouchableOpacity } from "react-native";
 import { Play } from "lucide-react-native";
 import { Heart, MessageCircle, Image as ImageIcon } from "lucide-react-native";
 import { GetPostDto } from "@/api/generated/model";
-import { CachedImage } from "@/components/CachedImage";
-import { useCachedMediaUri } from "@/services/mediaCache";
 
 interface PhotoItemProps {
   item: GetPostDto;
@@ -16,12 +14,11 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
   const [height, setHeight] = useState<number>(columnWidth * 1.33);
 
   const thumbnailUrl = item.thumbnailUrl ?? item.Media?.[0]?.imageUrl;
-  const cachedThumbnailUrl = useCachedMediaUri(thumbnailUrl);
 
   useEffect(() => {
-    if (!cachedThumbnailUrl) return;
+    if (!thumbnailUrl) return;
     Image.getSize(
-      cachedThumbnailUrl,
+      thumbnailUrl,
       (w, h) => {
         setHeight(columnWidth * (h / w));
       },
@@ -29,7 +26,7 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
         setHeight(columnWidth * 1.33);
       }
     );
-  }, [item.id, columnWidth, cachedThumbnailUrl]);
+  }, [item.id, columnWidth, thumbnailUrl]);
 
   return (
     <TouchableOpacity
@@ -39,7 +36,11 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
     >
       <View style={{ height, width: columnWidth }}>
         {/* Vídeos e imagens usam thumbnail — mais leve */}
-        <CachedImage uri={thumbnailUrl} style={{ width: columnWidth, height }} resizeMode="cover" />
+        <Image
+          source={{ uri: thumbnailUrl }}
+          style={{ width: columnWidth, height }}
+          resizeMode="cover"
+        />
 
         {item.isVideo && (
           <View className="absolute inset-0 items-center justify-center" pointerEvents="none">

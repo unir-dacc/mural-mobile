@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, TouchableOpacity, TextInput, Animated } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, Animated, Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
@@ -26,9 +26,6 @@ import { MasonryGrid } from "@/components/MasonryGrid";
 import { StoryStrip } from "@/components/StoryStrip";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { setCachedStory } from "@/services/storyCache";
-import { CachedImage } from "@/components/CachedImage";
-import { warmLatestStoriesMediaCache, warmPostsMediaCache } from "@/services/mediaCache";
 
 type Filters = {
   order: ListAllPostsOrder;
@@ -98,7 +95,6 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void warmLatestStoriesMediaCache();
       fetchStories();
     }, [fetchStories])
   );
@@ -116,7 +112,6 @@ export default function HomeScreen() {
       };
       const { data } = await listAllPosts(params);
       setPosts((prev) => (pageNumber === 1 ? data : [...prev, ...data]));
-      warmPostsMediaCache(data);
     } finally {
       setLoading(false);
     }
@@ -306,8 +301,8 @@ export default function HomeScreen() {
             style={{ backgroundColor: isDarkMode ? "#374151" : "#f3f4f6" }}
           >
             {profile?.avatarUrl ? (
-              <CachedImage
-                uri={profile.avatarUrl}
+              <Image
+                source={{ uri: profile.avatarUrl }}
                 style={{ width: 36, height: 36, borderRadius: 999 }}
               />
             ) : (

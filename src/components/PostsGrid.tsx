@@ -1,6 +1,7 @@
 import React from "react";
 import {
   View,
+  Image,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
@@ -10,7 +11,6 @@ import {
 import { useRouter } from "expo-router";
 import { GetPaginatedPostDtoDataItem } from "@/api/generated/model";
 import { useTheme } from "@/context/ThemeContext";
-import { CachedImage } from "@/components/CachedImage";
 
 const GRID_GAP = 2;
 
@@ -67,8 +67,8 @@ export function PostsGrid({
             style={{ width: thumbSize, height: thumbSize }}
           >
             {thumb ? (
-              <CachedImage
-                uri={thumb}
+              <Image
+                source={{ uri: thumb }}
                 style={{ width: thumbSize, height: thumbSize }}
                 resizeMode="cover"
               />
