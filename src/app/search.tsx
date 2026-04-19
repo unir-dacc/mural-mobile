@@ -12,6 +12,7 @@ import {
   Clock,
   Heart,
   MessageCircle,
+  User,
 } from "lucide-react-native";
 import { listAllPosts } from "@/api/generated/api";
 import {
@@ -20,20 +21,27 @@ import {
   ListAllPostsOrderBy,
 } from "@/api/generated/model";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 import { MasonryGrid } from "@/components/MasonryGrid";
 
 type Filters = {
   order: ListAllPostsOrder;
   orderBy: ListAllPostsOrderBy;
+  onlyMine: boolean;
 };
 
 export default function SearchScreen() {
   const { isDarkMode } = useTheme();
+  const { user } = useAuth();
   const router = useRouter();
   const { q } = useLocalSearchParams<{ q?: string }>();
 
   const [query, setQuery] = useState(q ?? "");
-  const [filters, setFilters] = useState<Filters>({ order: "desc", orderBy: "createdAt" });
+  const [filters, setFilters] = useState<Filters>({
+    order: "desc",
+    orderBy: "createdAt",
+    onlyMine: false,
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [posts, setPosts] = useState<GetPaginatedPostDtoDataItem[]>([]);
   const [page, setPage] = useState(1);
@@ -61,6 +69,7 @@ export default function SearchScreen() {
         search: q.trim() || undefined,
         order: f.order,
         orderBy: f.orderBy,
+        userId: f.onlyMine ? user?.sub : undefined,
         page: pageNumber,
         limit: 18,
       });
@@ -213,6 +222,29 @@ export default function SearchScreen() {
                     );
                   })}
                 </View>
+              </View>
+
+              {/* Meus posts */}
+              <View>
+                <Text
+                  className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
+                >
+                  Autor
+                </Text>
+                <TouchableOpacity
+                  onPress={() => applyFilter("onlyMine", !filters.onlyMine)}
+                  className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border self-start ${filters.onlyMine ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+                >
+                  <User
+                    size={14}
+                    color={filters.onlyMine ? "white" : isDarkMode ? "#9ca3af" : "#6b7280"}
+                  />
+                  <Text
+                    className={`text-xs font-medium ${filters.onlyMine ? "text-white" : textPrimary}`}
+                  >
+                    Meus posts
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}

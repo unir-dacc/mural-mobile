@@ -2,12 +2,34 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, TouchableOpacity, Image, TextInput, Animated } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { User, Search, Plus } from "lucide-react-native";
+import {
+  User,
+  Search,
+  Plus,
+  SlidersHorizontal,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Clock,
+  Heart,
+  MessageCircle,
+} from "lucide-react-native";
 import { listAllPosts, getUserById } from "@/api/generated/api";
-import { GetPostDto, GetUserDto, ListAllPostsParams } from "@/api/generated/model";
+import {
+  GetPostDto,
+  GetUserDto,
+  ListAllPostsParams,
+  ListAllPostsOrder,
+  ListAllPostsOrderBy,
+} from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+
+type Filters = {
+  order: ListAllPostsOrder;
+  orderBy: ListAllPostsOrderBy;
+  onlyMine: boolean;
+};
 
 export default function HomeScreen() {
   const [posts, setPosts] = useState<GetPostDto[]>([]);
@@ -15,6 +37,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState<boolean>(false);
   const [profile, setProfile] = useState<GetUserDto | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<Filters>({
+    order: ListAllPostsOrder.desc,
+    orderBy: ListAllPostsOrderBy.createdAt,
+    onlyMine: false,
+  });
+  const [showFilters, setShowFilters] = useState(false);
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
@@ -28,17 +56,14 @@ export default function HomeScreen() {
       const diff = offsetY - lastScrollY.current;
       lastScrollY.current = offsetY;
 
-      // Don't hide near the top
       if (offsetY < 60) {
         Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
         return;
       }
 
       if (diff > 4) {
-        // Scrolling down → hide
         Animated.spring(fabAnim, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
       } else if (diff < -4) {
-        // Scrolling up → show
         Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
       }
     },
@@ -52,21 +77,32 @@ export default function HomeScreen() {
       .catch(() => {});
   }, [user?.sub]);
 
-  const fetchPosts = async (pageNumber: number): Promise<void> => {
+  const fetchPosts = async (pageNumber: number, f: Filters): Promise<void> => {
     if (loading) return;
     setLoading(true);
     try {
-      const params: ListAllPostsParams = { page: pageNumber, limit: 20 };
+      const params: ListAllPostsParams = {
+        page: pageNumber,
+        limit: 20,
+        order: f.order,
+        orderBy: f.orderBy,
+        userId: f.onlyMine ? user?.sub : undefined,
+      };
       const { data } = await listAllPosts(params);
-      setPosts((prev) => [...prev, ...data]);
+      setPosts((prev) => (pageNumber === 1 ? data : [...prev, ...data]));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPosts(page);
-  }, [page]);
+    fetchPosts(page, filters);
+  }, [page, filters]);
+
+  const applyFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
 
   const loadMorePosts = () => {
     if (!loading) setPage((prev) => prev + 1);
@@ -81,10 +117,14 @@ export default function HomeScreen() {
     setSearchQuery("");
   };
 
+  const iconColor = (active: boolean) => (active ? "white" : isDarkMode ? "#9ca3af" : "#6b7280");
+  const textPrimary = isDarkMode ? "text-white" : "text-gray-900";
+  const textSecondary = isDarkMode ? "text-gray-400" : "text-gray-500";
+
   const header = (
-    <View className={`px-4 pt-4 pb-4 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
+    <View className={`px-4 pt-4 pb-4 gap-3 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
       <Text
-        className={`text-center text-sm leading-6 mb-4 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+        className={`text-center text-sm leading-6 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
       >
         Bem-vindo ao mural de fotos do curso de Ciência da Computação da UNIR. Este espaço foi
         criado para compartilhar visualizações, diagramas e projetos relacionados às disciplinas do
@@ -92,21 +132,123 @@ export default function HomeScreen() {
         professores.
       </Text>
 
-      <View
-        className={`flex-row items-center gap-3 px-4 rounded-2xl ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
-        style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
-      >
-        <Search size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-        <TextInput
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearchSubmit}
-          placeholder="Buscar posts..."
-          placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
-          returnKeyType="search"
-          className={`flex-1 py-3 text-sm ${isDarkMode ? "text-white" : "text-gray-900"}`}
-        />
+      {/* Search + filter button */}
+      <View className="flex-row items-center gap-2">
+        <View
+          className={`flex-1 flex-row items-center gap-3 px-4 rounded-2xl ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+          style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+        >
+          <Search size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearchSubmit}
+            placeholder="Buscar posts..."
+            placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+            returnKeyType="search"
+            className={`flex-1 py-3 text-sm ${isDarkMode ? "text-white" : "text-gray-900"}`}
+          />
+        </View>
+
+        <TouchableOpacity
+          onPress={() => setShowFilters((v) => !v)}
+          className={`w-11 h-11 rounded-2xl items-center justify-center ${showFilters ? "bg-indigo-600" : isDarkMode ? "bg-gray-800" : "bg-white"}`}
+          style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+        >
+          <SlidersHorizontal
+            size={18}
+            color={showFilters ? "white" : isDarkMode ? "#9ca3af" : "#6b7280"}
+          />
+        </TouchableOpacity>
       </View>
+
+      {/* Filter accordion */}
+      {showFilters && (
+        <View
+          className={`rounded-2xl p-4 gap-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+          style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+        >
+          {/* Ordem */}
+          <View>
+            <Text
+              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
+            >
+              Ordem
+            </Text>
+            <View className="flex-row gap-2">
+              {(["desc", "asc"] as ListAllPostsOrder[]).map((value) => {
+                const active = filters.order === value;
+                const label = value === "desc" ? "Decrescente" : "Crescente";
+                const Icon = value === "desc" ? ArrowDownAZ : ArrowUpAZ;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => applyFilter("order", value)}
+                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+                  >
+                    <Icon size={14} color={iconColor(active)} />
+                    <Text className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Ordenar por */}
+          <View>
+            <Text
+              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
+            >
+              Ordenar por
+            </Text>
+            <View className="flex-row gap-2">
+              {(
+                [
+                  { value: "createdAt", label: "Data", Icon: Clock },
+                  { value: "likes", label: "Likes", Icon: Heart },
+                  { value: "comments", label: "Comentários", Icon: MessageCircle },
+                ] as { value: ListAllPostsOrderBy; label: string; Icon: any }[]
+              ).map(({ value, label, Icon }) => {
+                const active = filters.orderBy === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => applyFilter("orderBy", value)}
+                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+                  >
+                    <Icon size={14} color={iconColor(active)} />
+                    <Text className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Autor */}
+          <View>
+            <Text
+              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
+            >
+              Autor
+            </Text>
+            <TouchableOpacity
+              onPress={() => applyFilter("onlyMine", !filters.onlyMine)}
+              className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border self-start ${filters.onlyMine ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+            >
+              <User size={14} color={iconColor(filters.onlyMine)} />
+              <Text
+                className={`text-xs font-medium ${filters.onlyMine ? "text-white" : textPrimary}`}
+              >
+                Meus posts
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 
