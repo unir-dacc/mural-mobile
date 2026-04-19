@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
+  FlatList,
   TextInput,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -40,33 +41,45 @@ import {
   unlikePost,
 } from "@/api/generated/api";
 import type { StoryDto, StoryDtoItemsItem } from "@/api/generated/model";
-import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
-import { getCachedStory, removeCachedStory, setCachedStory } from "@/services/storyCache";
-import { CachedImage } from "@/components/CachedImage";
-import { useCachedMediaUri, warmStoryMediaCache } from "@/services/mediaCache";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const IMAGE_STORY_DURATION = 5000;
 
-function StoryVideo({ uri }: { uri: string }) {
-  const cachedUri = useCachedMediaUri(uri);
-  const player = useVideoPlayer(
-    cachedUri ? { uri: cachedUri, useCaching: true } : null,
-    (videoPlayer) => {
-      videoPlayer.loop = false;
-      videoPlayer.play();
-    }
-  );
+function StoryMedia({ item, onLoaded }: { item: StoryDtoItemsItem; onLoaded: () => void }) {
+  const player = useVideoPlayer(item.isVideo ? item.imageUrl : null, (videoPlayer) => {
+    videoPlayer.loop = false;
+    videoPlayer.play();
+  });
 
   return (
-    <VideoView
-      player={player}
-      style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-      contentFit="contain"
-      nativeControls={false}
-      allowsFullscreen={false}
-    />
+    <View
+      style={{
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {item.isVideo ? (
+        <VideoView
+          player={player}
+          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+          contentFit="contain"
+          nativeControls={false}
+          allowsFullscreen={false}
+          onFirstFrameRender={onLoaded}
+        />
+      ) : (
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+          resizeMode="contain"
+          onLoad={onLoaded}
+          onError={onLoaded}
+        />
+      )}
+    </View>
   );
 }
 
@@ -87,13 +100,11 @@ export default function StoryViewerScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isDarkMode } = useTheme();
   const { user } = useAuth();
 
-  const [story, setStory] = useState<StoryDto | null>(() =>
-    id ? (getCachedStory(id) ?? null) : null
-  );
-  const [loading, setLoading] = useState(!story);
+  const [story, setStory] = useState<StoryDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mediaLoading, setMediaLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [commentText, setCommentText] = useState("");
   const [liked, setLiked] = useState(false);
@@ -102,7 +113,7 @@ export default function StoryViewerScreen() {
   const [commenting, setCommenting] = useState(false);
   const [loadingInteraction, setLoadingInteraction] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useRef<FlatList<StoryDtoItemsItem>>(null);
 
   const items = useMemo(
     () => [...(story?.items ?? [])].sort((a, b) => a.order - b.order),
@@ -110,30 +121,28 @@ export default function StoryViewerScreen() {
   );
   const currentItem = items[currentIndex];
   const currentPostId = currentItem?.postId;
+  const handleClose = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace("/");
+  }, [router]);
 
   useEffect(() => {
     if (!id) return;
 
-    const cached = getCachedStory(id);
-    if (cached) {
-      setStory(cached);
-      setLoading(false);
-    }
-
     getStoryById(id)
       .then((data) => {
-        setCachedStory(data);
         setStory(data);
-        warmStoryMediaCache(data);
       })
       .catch((error) => {
-        removeCachedStory(id);
-
         if (axios.isAxiosError(error) && error.response?.status === 404) {
           Alert.alert("Story indisponível", "Esse story expirou ou não está mais acessível.", [
             {
               text: "Fechar",
-              onPress: () => (router.canGoBack() ? router.back() : router.replace("/")),
+              onPress: handleClose,
             },
           ]);
           return;
@@ -142,29 +151,30 @@ export default function StoryViewerScreen() {
         Alert.alert("Erro", "Não foi possível carregar o story.", [
           {
             text: "Fechar",
-            onPress: () => (router.canGoBack() ? router.back() : router.replace("/")),
+            onPress: handleClose,
           },
         ]);
       })
       .finally(() => setLoading(false));
-  }, [id, router]);
+  }, [handleClose, id]);
 
   const goToIndex = useCallback(
     (index: number) => {
       if (index < 0 || index >= items.length) {
         if (index >= items.length) {
-          router.back();
+          handleClose();
         }
         return;
       }
 
-      scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
+      listRef.current?.scrollToIndex({ index, animated: true });
       setCurrentIndex(index);
     },
-    [items.length, router]
+    [handleClose, items.length]
   );
 
   useEffect(() => {
+    setMediaLoading(true);
     progressAnim.stopAnimation();
     progressAnim.setValue(0);
 
@@ -215,6 +225,7 @@ export default function StoryViewerScreen() {
   const handleMomentumEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const nextIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     setCurrentIndex(nextIndex);
+    setCommentText("");
   }, []);
 
   const handleTapLeft = useCallback(() => {
@@ -260,6 +271,22 @@ export default function StoryViewerScreen() {
     }
   }, [commentText, currentPostId]);
 
+  const renderStoryItem = useCallback(
+    ({ item }: { item: StoryDtoItemsItem }) => (
+      <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: "#000" }}>
+        <StoryMedia
+          item={item}
+          onLoaded={() => {
+            if (item.id === currentItem?.id) {
+              setMediaLoading(false);
+            }
+          }}
+        />
+      </View>
+    ),
+    [currentItem?.id]
+  );
+
   if (loading || !story || items.length === 0) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top", "bottom"]}>
@@ -278,31 +305,49 @@ export default function StoryViewerScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          ref={scrollRef}
+        <FlatList
+          ref={listRef}
+          data={items}
+          keyExtractor={(item) => item.id}
+          renderItem={renderStoryItem}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleMomentumEnd}
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          windowSize={2}
+          removeClippedSubviews
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
           style={{ flex: 1, backgroundColor: "#000" }}
-        >
-          {items.map((item) => (
+        />
+
+        {mediaLoading && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              inset: 0,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <View
-              key={item.id}
-              style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: "#000" }}
+              style={{
+                backgroundColor: "rgba(0,0,0,0.45)",
+                borderRadius: 24,
+                paddingHorizontal: 18,
+                paddingVertical: 14,
+              }}
             >
-              {item.isVideo ? (
-                <StoryVideo uri={item.imageUrl} />
-              ) : (
-                <CachedImage
-                  uri={item.imageUrl}
-                  style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-                  contentFit="contain"
-                />
-              )}
+              <ActivityIndicator size="large" color="#fff" />
             </View>
-          ))}
-        </ScrollView>
+          </View>
+        )}
 
         <View
           pointerEvents="box-none"
@@ -311,6 +356,7 @@ export default function StoryViewerScreen() {
             top: insets.top + 8,
             left: 12,
             right: 12,
+            zIndex: 30,
           }}
         >
           <View style={{ flexDirection: "row", gap: 4, marginBottom: 12 }}>
@@ -360,7 +406,7 @@ export default function StoryViewerScreen() {
             </View>
 
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleClose}
               activeOpacity={0.8}
               style={{
                 width: 38,
@@ -382,9 +428,10 @@ export default function StoryViewerScreen() {
             position: "absolute",
             left: 0,
             right: 0,
-            top: 0,
-            bottom: 0,
+            top: insets.top + 110,
+            bottom: insets.bottom + 170,
             flexDirection: "row",
+            zIndex: 10,
           }}
         >
           <Pressable style={{ flex: 1 }} onPress={handleTapLeft} />
@@ -397,6 +444,7 @@ export default function StoryViewerScreen() {
             bottom: insets.bottom + 18,
             left: 16,
             right: 16,
+            zIndex: 20,
           }}
         >
           {!!currentItem?.caption && (
