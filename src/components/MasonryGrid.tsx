@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -45,10 +45,29 @@ export function MasonryGrid({
   const columnWidth =
     (screenWidth - HORIZONTAL_PADDING * 2 - COLUMN_GAP * (numColumns - 1)) / numColumns;
 
-  const columns: GetPostDto[][] = Array.from({ length: numColumns }, () => []);
-  posts.forEach((post, i) => {
-    columns[i % numColumns].push(post);
-  });
+  const columns = useMemo(() => {
+    const nextColumns: GetPostDto[][] = Array.from({ length: numColumns }, () => []);
+    posts.forEach((post, i) => {
+      nextColumns[i % numColumns].push(post);
+    });
+
+    return nextColumns;
+  }, [numColumns, posts]);
+
+  const loadMoreLockedRef = useRef(false);
+
+  const handleLoadMore = () => {
+    if (loading || loadMoreLockedRef.current) {
+      return;
+    }
+
+    loadMoreLockedRef.current = true;
+    onLoadMore();
+  };
+
+  if (!loading && loadMoreLockedRef.current) {
+    loadMoreLockedRef.current = false;
+  }
 
   if (loading && posts.length === 0) {
     return (
@@ -73,10 +92,13 @@ export function MasonryGrid({
 
         const isNearBottom =
           layoutMeasurement.height + contentOffset.y >= contentSize.height - 1000;
-        if (isNearBottom) onLoadMore();
+        if (isNearBottom) {
+          handleLoadMore();
+        }
       }}
-      scrollEventThrottle={16}
+      scrollEventThrottle={32}
       showsVerticalScrollIndicator={false}
+      removeClippedSubviews
     >
       {header}
 
