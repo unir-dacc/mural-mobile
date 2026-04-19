@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "904477294373",
+    "project_id": "mural-de-fotos-29295",
+    "storage_bucket": "mural-de-fotos-29295.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:904477294373:android:26f549506f2968096b24cc",
+        "android_client_info": {
+          "package_name": "com.unirdacc.muralmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5d7SFI__4RzHx0nOXsXs7bRpPplwzy7o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

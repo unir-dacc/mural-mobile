@@ -104,7 +104,6 @@ Use o gerenciador definido pelo projeto:
 npm install
 ```
 
-
 ### 5. Executar o projeto Expo
 
 Inicie o servidor de desenvolvimento:

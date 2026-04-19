@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mural-mobile",
+    "name": "Mural de Fotos",
     "slug": "mural-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,17 +9,25 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "Receba notificações sobre curtidas e comentários nos seus posts."
+      },
+      "bundleIdentifier": "com.unirdacc.muralmobile"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundImage": "./assets/images/icon.png",
+        "monochromeImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "useCleartextTraffic": true,
+      "package": "com.unirdacc.muralmobile",
+      "useNextNotificationsApi": true,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -29,21 +37,39 @@
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#4f46e5",
+          "defaultChannel": "default",
+          "sounds": [],
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#ffffff"
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "93dc59f3-5b69-4ecf-a853-56a0508efa06"
+      }
+    },
+    "owner": "ricardo-cpu"
   }
 }

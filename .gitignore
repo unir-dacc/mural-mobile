@@ -42,3 +42,7 @@ app-example
 /ios
 /android
 .android
+
+src/api/generated
+
+.env
