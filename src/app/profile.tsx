@@ -17,6 +17,7 @@ import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { PostsGrid } from "@/components/PostsGrid";
 import { ProfileTabs } from "@/components/ProfileTabs";
+import { warmPostsMediaCache } from "@/services/mediaCache";
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<GetUserDto | null>(null);
@@ -53,6 +54,7 @@ export default function ProfileScreen() {
         const newPosts = data.data ?? [];
         if (pageNumber === 1) setPosts(newPosts);
         else setPosts((prev) => [...prev, ...newPosts]);
+        warmPostsMediaCache(newPosts);
         setHasMore(data.meta.currentPage < data.meta.lastPage);
       } catch {
         //
@@ -76,6 +78,7 @@ export default function ProfileScreen() {
         const newPosts = data.data ?? [];
         if (pageNumber === 1) setTaggedPosts(newPosts);
         else setTaggedPosts((prev) => [...prev, ...newPosts]);
+        warmPostsMediaCache(newPosts);
         setTaggedHasMore(data.meta.currentPage < data.meta.lastPage);
       } catch {
         //
@@ -108,7 +111,7 @@ export default function ProfileScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images",
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,

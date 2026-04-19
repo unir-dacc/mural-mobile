@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { CachedImage } from "@/components/CachedImage";
 
 interface UserAvatarProps {
   name?: string;
@@ -10,10 +11,10 @@ interface UserAvatarProps {
 }
 
 const sizeMap = {
-  sm: { container: "w-7 h-7", image: "w-7 h-7", text: "text-xs" },
-  md: { container: "w-9 h-9", image: "w-9 h-9", text: "text-sm" },
-  lg: { container: "w-14 h-14", image: "w-14 h-14", text: "text-lg" },
-  xl: { container: "w-20 h-20", image: "w-20 h-20", text: "text-2xl" },
+  sm: { container: "w-7 h-7", size: 28, text: "text-xs" },
+  md: { container: "w-9 h-9", size: 36, text: "text-sm" },
+  lg: { container: "w-14 h-14", size: 56, text: "text-lg" },
+  xl: { container: "w-20 h-20", size: 80, text: "text-2xl" },
 };
 
 export function UserAvatar({ name, avatarUrl, size = "md", onPress }: UserAvatarProps) {
@@ -25,7 +26,7 @@ export function UserAvatar({ name, avatarUrl, size = "md", onPress }: UserAvatar
       className={`${s.container} rounded-full overflow-hidden items-center justify-center ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
     >
       {avatarUrl ? (
-        <Image source={{ uri: avatarUrl }} className={s.image} />
+        <CachedImage uri={avatarUrl} style={{ width: s.size, height: s.size }} />
       ) : (
         <Text className={`${s.text} font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
           {name?.[0]?.toUpperCase() ?? "?"}

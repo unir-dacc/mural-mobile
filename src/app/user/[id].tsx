@@ -9,6 +9,7 @@ import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { PostsGrid } from "@/components/PostsGrid";
 import { ProfileTabs } from "@/components/ProfileTabs";
+import { warmPostsMediaCache } from "@/services/mediaCache";
 
 export default function UserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,6 +44,7 @@ export default function UserScreen() {
         const newPosts = data.data ?? [];
         if (pageNumber === 1) setPosts(newPosts);
         else setPosts((prev) => [...prev, ...newPosts]);
+        warmPostsMediaCache(newPosts);
         setHasMore(data.meta.currentPage < data.meta.lastPage);
       } catch {
         //
@@ -66,6 +68,7 @@ export default function UserScreen() {
         const newPosts = data.data ?? [];
         if (pageNumber === 1) setTaggedPosts(newPosts);
         else setTaggedPosts((prev) => [...prev, ...newPosts]);
+        warmPostsMediaCache(newPosts);
         setTaggedHasMore(data.meta.currentPage < data.meta.lastPage);
       } catch {
         //

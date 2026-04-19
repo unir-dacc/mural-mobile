@@ -9,8 +9,9 @@ import {
   registerForPushNotifications,
   setupNotificationCategories,
   ACTION_LIKE,
-  NotificationData,
   getNotificationImage,
+  getNotificationRoute,
+  parseNotificationData,
 } from "@/services/notifications";
 
 export function useNotificationSetup() {
@@ -29,17 +30,20 @@ export function useNotificationSetup() {
 
   // Trata quando o usuário interage com a notificação
   const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
-    const data = response.notification.request.content.data as NotificationData;
+    const data = parseNotificationData(response);
     const actionId = response.actionIdentifier;
 
-    if (!data?.postId) return;
+    if (!data) return;
 
-    if (actionId === ACTION_LIKE) {
+    if (actionId === ACTION_LIKE && "postId" in data && data.postId) {
       likePost(data.postId).catch((err) =>
         console.error("[Notifications] Erro ao curtir via push:", err)
       );
     } else if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
-      router.push(`/post/${data.postId}`);
+      const route = getNotificationRoute(data);
+      if (route) {
+        router.push(route);
+      }
     }
   };
 

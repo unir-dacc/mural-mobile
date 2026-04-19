@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ScrollView,
   TextInput,
@@ -14,6 +13,8 @@ import {
   Animated,
   ActivityIndicator,
   Modal,
+  Alert,
+  Switch,
   StatusBar as RNStatusBar,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -27,8 +28,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from "lucide-react-native";
-import { Video, ResizeMode } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import {
   getPostById,
   commentsControllerGetComments,
@@ -36,13 +40,18 @@ import {
   likePost,
   unlikePost,
   likesControllerLiked,
+  updatePostById,
+  deletePostById,
 } from "@/api/generated/api";
 import { GetPostDto, CommentsControllerGetComments200Item } from "@/api/generated/model";
+import type { UpdatePostDto } from "@/api/generated/model/updatePostDto";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { PostSkeleton, SkeletonPulse } from "@/components/PostSkeleton";
+import { CachedImage } from "@/components/CachedImage";
+import { useCachedMediaUri, warmPostsMediaCache } from "@/services/mediaCache";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -152,8 +161,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
               key={img.id}
               style={{ width: W, height: H, justifyContent: "center", alignItems: "center" }}
             >
-              <Image
-                source={{ uri: img.imageUrl }}
+              <CachedImage
+                uri={img.imageUrl}
                 style={{ width: W, height: H }}
                 resizeMode="contain"
               />
@@ -238,9 +247,24 @@ interface MediaItemProps {
   onPress?: () => void;
 }
 
+const PostVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
+  const cachedUri = useCachedMediaUri(uri);
+  const player = useVideoPlayer(cachedUri ? { uri: cachedUri, useCaching: true } : null);
+
+  return (
+    <VideoView
+      player={player}
+      style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
+      contentFit="cover"
+      nativeControls
+    />
+  );
+};
+
 const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const cachedUri = useCachedMediaUri(media.imageUrl);
 
   const onLoad = useCallback(() => {
     setImageLoaded(true);
@@ -255,13 +279,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
     <View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}>
       {media.isVideo ? (
         <>
-          <Video
-            source={{ uri: media.imageUrl }}
-            style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
-            resizeMode={ResizeMode.COVER}
-            useNativeControls
-            shouldPlay={false}
-          />
+          <PostVideoPlayer uri={media.imageUrl} />
           <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
             <View className="w-12 h-12 rounded-full bg-black/40 items-center justify-center">
               <Play size={22} color="white" fill="white" />
@@ -282,7 +300,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
             />
           )}
           <Animated.Image
-            source={{ uri: media.imageUrl }}
+            source={{ uri: cachedUri }}
             style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH, opacity: fadeAnim }}
             resizeMode="cover"
             onLoad={onLoad}
@@ -348,6 +366,8 @@ function usePostDetail(id: string | undefined) {
   const [likeCount, setLikeCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [commenting, setCommenting] = useState(false);
+  const [savingPost, setSavingPost] = useState(false);
+  const [deletingPost, setDeletingPost] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -364,6 +384,7 @@ function usePostDetail(id: string | undefined) {
         setLikeCount(postRes._count.likes);
         setComments(commentsRes);
         setLiked(isLiked as boolean);
+        warmPostsMediaCache([postRes]);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -405,7 +426,46 @@ function usePostDetail(id: string | undefined) {
     [id]
   );
 
-  return { post, comments, liked, likeCount, loading, commenting, handleLike, handleComment };
+  const handleUpdatePost = useCallback(
+    async (payload: UpdatePostDto) => {
+      if (!id || !post) return null;
+      setSavingPost(true);
+      try {
+        const updatedPost = await updatePostById(id, payload);
+        setPost(updatedPost);
+        return updatedPost;
+      } finally {
+        setSavingPost(false);
+      }
+    },
+    [id, post]
+  );
+
+  const handleDeletePost = useCallback(async () => {
+    if (!id) return false;
+    setDeletingPost(true);
+    try {
+      await deletePostById(id);
+      return true;
+    } finally {
+      setDeletingPost(false);
+    }
+  }, [id]);
+
+  return {
+    post,
+    comments,
+    liked,
+    likeCount,
+    loading,
+    commenting,
+    savingPost,
+    deletingPost,
+    handleLike,
+    handleComment,
+    handleUpdatePost,
+    handleDeletePost,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -422,16 +482,39 @@ export default function PostDetailScreen() {
   const [mediaIndex, setMediaIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [ownerMenuVisible, setOwnerMenuVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [draftCaption, setDraftCaption] = useState("");
+  const [draftIsPublic, setDraftIsPublic] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const fabAnim = useRef(new Animated.Value(1)).current;
   const lastScrollY = useRef(0);
   const fabVisible = useRef(true);
 
-  const { post, comments, liked, likeCount, loading, commenting, handleLike, handleComment } =
-    usePostDetail(id);
+  const {
+    post,
+    comments,
+    liked,
+    likeCount,
+    loading,
+    commenting,
+    savingPost,
+    deletingPost,
+    handleLike,
+    handleComment,
+    handleUpdatePost,
+    handleDeletePost,
+  } = usePostDetail(id);
 
   const mediaList = post?.Media ?? [];
   const imageList = mediaList.filter((m) => !m.isVideo);
+  const isOwner = user?.sub === post?.userId;
+
+  useEffect(() => {
+    if (!post) return;
+    setDraftCaption(post.caption ?? "");
+    setDraftIsPublic(post.public);
+  }, [post]);
 
   const openViewer = useCallback(
     (mediaId: string) => {
@@ -484,6 +567,49 @@ export default function PostDetailScreen() {
     [router]
   );
 
+  const openEditModal = useCallback(() => {
+    if (!post) return;
+    setDraftCaption(post.caption ?? "");
+    setDraftIsPublic(post.public);
+    setOwnerMenuVisible(false);
+    setEditModalVisible(true);
+  }, [post]);
+
+  const onSavePost = useCallback(async () => {
+    if (!post) return;
+    try {
+      const updated = await handleUpdatePost({
+        caption: draftCaption.trim(),
+        public: String(draftIsPublic),
+      });
+      if (!updated) return;
+      setEditModalVisible(false);
+      Alert.alert("Post atualizado", "As alterações foram salvas com sucesso.");
+    } catch {
+      Alert.alert("Erro", "Não foi possível atualizar o post. Tente novamente.");
+    }
+  }, [draftCaption, draftIsPublic, handleUpdatePost, post]);
+
+  const onDeletePost = useCallback(() => {
+    setOwnerMenuVisible(false);
+    Alert.alert("Excluir post", "Essa ação não pode ser desfeita.", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const deleted = await handleDeletePost();
+            if (!deleted) return;
+            router.replace("/");
+          } catch {
+            Alert.alert("Erro", "Não foi possível excluir o post. Tente novamente.");
+          }
+        },
+      },
+    ]);
+  }, [handleDeletePost, router]);
+
   // ── Loading state ──
   if (loading || !post) {
     return (
@@ -501,6 +627,9 @@ export default function PostDetailScreen() {
   const textPrimary = isDarkMode ? "text-white" : "text-gray-900";
   const textMuted = isDarkMode ? "text-gray-400" : "text-gray-500";
   const iconColor = isDarkMode ? "#f9fafb" : "#111827";
+  const modalBg = isDarkMode ? "bg-gray-800" : "bg-white";
+  const inputBg = isDarkMode ? "bg-gray-900" : "bg-gray-50";
+  const inputBorder = isDarkMode ? "border-gray-700" : "border-gray-200";
 
   return (
     <>
@@ -509,7 +638,24 @@ export default function PostDetailScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className={`flex-1 ${bg}`}
       >
-        <TopBar title="Post" />
+        <TopBar
+          title="Post"
+          right={
+            isOwner ? (
+              <TouchableOpacity
+                onPress={() => setOwnerMenuVisible(true)}
+                activeOpacity={0.7}
+                disabled={deletingPost}
+              >
+                {deletingPost ? (
+                  <ActivityIndicator size="small" color="#4f46e5" />
+                ) : (
+                  <MoreVertical size={20} color={iconColor} />
+                )}
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -669,6 +815,119 @@ export default function PostDetailScreen() {
         visible={viewerVisible}
         onClose={() => setViewerVisible(false)}
       />
+
+      <Modal
+        visible={ownerMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOwnerMenuVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          className="flex-1 bg-black/40 justify-start"
+          onPress={() => setOwnerMenuVisible(false)}
+        >
+          <View
+            className={`mt-20 mx-4 ml-auto w-48 rounded-2xl overflow-hidden ${modalBg}`}
+            style={{ elevation: 10, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 16 }}
+          >
+            <TouchableOpacity
+              onPress={openEditModal}
+              className="flex-row items-center gap-3 px-4 py-3"
+            >
+              <Pencil size={18} color={iconColor} />
+              <Text className={`text-sm font-medium ${textPrimary}`}>Editar post</Text>
+            </TouchableOpacity>
+            <View className={`h-px ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`} />
+            <TouchableOpacity
+              onPress={onDeletePost}
+              className="flex-row items-center gap-3 px-4 py-3"
+            >
+              <Trash2 size={18} color="#ef4444" />
+              <Text className="text-sm font-medium text-red-500">Excluir post</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1 justify-center bg-black/50 px-4"
+        >
+          <View
+            className={`rounded-3xl p-5 ${modalBg}`}
+            style={{ elevation: 10, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 16 }}
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <View>
+                <Text className={`text-lg font-bold ${textPrimary}`}>Editar post</Text>
+                <Text className={`text-sm mt-1 ${textMuted}`}>
+                  Atualize a legenda e a visibilidade do seu post.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} activeOpacity={0.7}>
+                <X size={20} color={iconColor} />
+              </TouchableOpacity>
+            </View>
+
+            <View className="gap-4">
+              <View>
+                <Text className={`text-sm font-semibold mb-2 ${textPrimary}`}>Legenda</Text>
+                <TextInput
+                  value={draftCaption}
+                  onChangeText={setDraftCaption}
+                  placeholder="Escreva uma legenda para este post..."
+                  placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+                  multiline
+                  textAlignVertical="top"
+                  className={`min-h-[120px] rounded-2xl border px-4 py-3 text-sm ${textPrimary} ${inputBg} ${inputBorder}`}
+                />
+              </View>
+
+              <View
+                className={`flex-row items-center justify-between rounded-2xl border px-4 py-3 ${inputBg} ${inputBorder}`}
+              >
+                <View className="flex-1 pr-3">
+                  <Text className={`text-sm font-semibold ${textPrimary}`}>Post público</Text>
+                  <Text className={`text-xs mt-1 ${textMuted}`}>
+                    Quando ativado, outros usuários podem encontrar este post.
+                  </Text>
+                </View>
+                <Switch value={draftIsPublic} onValueChange={setDraftIsPublic} />
+              </View>
+            </View>
+
+            <View className="flex-row gap-3 mt-5">
+              <TouchableOpacity
+                onPress={() => setEditModalVisible(false)}
+                disabled={savingPost}
+                className={`flex-1 rounded-2xl border py-3 items-center ${inputBorder}`}
+              >
+                <Text className={`text-sm font-semibold ${textPrimary}`}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onSavePost}
+                disabled={savingPost}
+                className={`flex-1 rounded-2xl py-3 items-center ${
+                  savingPost ? "bg-indigo-400" : "bg-indigo-600"
+                }`}
+              >
+                {savingPost ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text className="text-sm font-semibold text-white">Salvar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }

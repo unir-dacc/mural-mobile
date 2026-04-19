@@ -2,12 +2,14 @@ import React, { useEffect } from "react";
 import { View, ActivityIndicator, Platform } from "react-native";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useNotificationSetup } from "@/hooks/useNotificationSetup";
 import "../global.css";
 import { getNotificationImage } from "@/services/notifications";
 import { NotificationBanner } from "@/components/NotificationBanner";
+import { syncAllMuralMediaCache } from "@/services/mediaCache";
 
 // Configuração de notificações push
 Notifications.setNotificationHandler({
@@ -81,30 +83,45 @@ function AuthGuard() {
     }
   }, [banner, setBanner]);
 
+  useEffect(() => {
+    if (!user) return;
+    void syncAllMuralMediaCache();
+  }, [user]);
+
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
+      <SafeAreaView style={{ flex: 1 }} edges={["bottom", "left", "right"]}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Slot />
-      {banner && (
-        <NotificationBanner title={banner.title!} body={banner.body!} imageUrl={banner.imageUrl} />
-      )}
-    </View>
+    <SafeAreaView style={{ flex: 1 }} edges={["bottom", "left", "right"]}>
+      <View style={{ flex: 1 }}>
+        <Slot />
+        {banner && (
+          <NotificationBanner
+            title={banner.title!}
+            body={banner.body!}
+            imageUrl={banner.imageUrl}
+          />
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AuthGuard />
-      </AuthProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthGuard />
+        </AuthProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

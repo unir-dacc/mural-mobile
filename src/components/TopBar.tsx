@@ -7,10 +7,11 @@ import { useTheme } from "@/context/ThemeContext";
 interface TopBarProps {
   title: string;
   onBack?: () => void;
+  left?: React.ReactNode;
   right?: React.ReactNode;
 }
 
-export function TopBar({ title, onBack, right }: TopBarProps) {
+export function TopBar({ title, onBack, left, right }: TopBarProps) {
   const { isDarkMode } = useTheme();
   const router = useRouter();
 
@@ -19,13 +20,19 @@ export function TopBar({ title, onBack, right }: TopBarProps) {
       className={`pt-14 px-4 pb-3 flex-row items-center justify-between ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
       style={{ elevation: 3, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4 }}
     >
-      <TouchableOpacity onPress={onBack ?? (() => router.back())}>
-        <ArrowLeft size={22} color={isDarkMode ? "#f9fafb" : "#111827"} />
-      </TouchableOpacity>
+      <View style={{ minWidth: 22, justifyContent: "center" }}>
+        {left ?? (
+          <TouchableOpacity onPress={onBack ?? (() => router.back())}>
+            <ArrowLeft size={22} color={isDarkMode ? "#f9fafb" : "#111827"} />
+          </TouchableOpacity>
+        )}
+      </View>
       <Text className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
         {title}
       </Text>
-      <View style={{ width: 22 }}>{right ?? null}</View>
+      <View style={{ minWidth: 22, alignItems: "flex-end", justifyContent: "center" }}>
+        {right ?? null}
+      </View>
     </View>
   );
 }
