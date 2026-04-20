@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Mural de Fotos",
-    "slug": "mural-mobile",
+    "slug": "mural-de-fotos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -68,9 +68,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "93dc59f3-5b69-4ecf-a853-56a0508efa06"
+        "projectId": "388ae084-d1e3-4d8a-b9a0-1991346e30e6"
       }
     },
-    "owner": "ricardo-cpu"
+    "owner": "unir-dacc"
   }
 }

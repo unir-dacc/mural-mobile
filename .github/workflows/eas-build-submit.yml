@@ -1,0 +1,67 @@
+name: EAS Build & Submit Android
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build_android:
+    name: Build Android app
+    runs-on: ubuntu-latest
+    outputs:
+      build_id: ${{ steps.build.outputs.build_id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build on EAS
+        id: build
+        run: |
+          BUILD_OUTPUT=$(eas build --platform android --profile production --non-interactive --json)
+          echo "$BUILD_OUTPUT"
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id')
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+  submit_android:
+    name: Submit to Google Play Store
+    needs: [build_android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Submit to Google Play Store
+        run: |
+          eas submit --platform android --profile production \
+            --id ${{ needs.build_android.outputs.build_id }} \
+            --non-interactive
