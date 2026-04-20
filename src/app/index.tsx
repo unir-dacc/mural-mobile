@@ -55,6 +55,7 @@ export default function HomeScreen() {
   const fabAnim = useRef(new Animated.Value(1)).current as any;
   const lastScrollY = useRef(0);
   const fabVisibilityRef = useRef<"visible" | "hidden">("visible");
+  const loadingRef = useRef(false);
 
   const animateFab = useCallback(
     (nextVisibility: "visible" | "hidden") => {
@@ -118,7 +119,8 @@ export default function HomeScreen() {
 
   const fetchPosts = useCallback(
     async (pageNumber: number, f: Filters): Promise<void> => {
-      if (loading) return;
+      if (loadingRef.current) return;
+      loadingRef.current = true;
       setLoading(true);
       try {
         const params: ListAllPostsParams = {
@@ -131,10 +133,11 @@ export default function HomeScreen() {
         const { data } = await listAllPosts(params);
         setPosts((prev) => (pageNumber === 1 ? data : [...prev, ...data]));
       } finally {
+        loadingRef.current = false;
         setLoading(false);
       }
     },
-    [loading, user?.sub]
+    [user?.sub]
   );
 
   useEffect(() => {
@@ -147,8 +150,8 @@ export default function HomeScreen() {
   };
 
   const loadMorePosts = useCallback(() => {
-    if (!loading) setPage((prev) => prev + 1);
-  }, [loading]);
+    if (!loadingRef.current) setPage((prev) => prev + 1);
+  }, []);
 
   const handleSearchSubmit = useCallback(() => {
     if (!searchQuery.trim()) {
