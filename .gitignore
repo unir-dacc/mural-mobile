@@ -43,6 +43,4 @@ app-example
 /android
 .android
 
-src/api/generated
-
 .env
