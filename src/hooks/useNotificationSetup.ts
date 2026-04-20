@@ -16,7 +16,7 @@ import {
 
 export function useNotificationSetup() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, justLoggedIn } = useAuth();
 
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const receivedListener = useRef<Notifications.EventSubscription | null>(null);
@@ -64,7 +64,13 @@ export function useNotificationSetup() {
   };
 
   useEffect(() => {
-    if (user && !isReady.current) {
+    if (!user) {
+      isReady.current = false;
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && justLoggedIn && !isReady.current) {
       (async () => {
         try {
           const token = await registerForPushNotifications();
@@ -106,7 +112,7 @@ export function useNotificationSetup() {
       responseListener.current?.remove();
       receivedListener.current?.remove();
     };
-  }, [user, router]);
+  }, [user, justLoggedIn, router]);
 
   return { banner, setBanner }; // Retornamos para renderizar o banner no layout
 }

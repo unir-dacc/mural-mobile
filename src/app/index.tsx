@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { View, Text, TouchableOpacity, TextInput, Animated, Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -54,6 +54,23 @@ export default function HomeScreen() {
   // ── FAB scroll-aware visibility ──
   const fabAnim = useRef(new Animated.Value(1)).current as any;
   const lastScrollY = useRef(0);
+  const fabVisibilityRef = useRef<"visible" | "hidden">("visible");
+
+  const animateFab = useCallback(
+    (nextVisibility: "visible" | "hidden") => {
+      if (fabVisibilityRef.current === nextVisibility) {
+        return;
+      }
+
+      fabVisibilityRef.current = nextVisibility;
+      Animated.spring(fabAnim, {
+        toValue: nextVisibility === "visible" ? 1 : 0,
+        useNativeDriver: true,
+        bounciness: nextVisibility === "visible" ? 4 : 0,
+      }).start();
+    },
+    [fabAnim]
+  );
 
   const handleScroll = useCallback(
     (offsetY: number) => {
@@ -61,17 +78,17 @@ export default function HomeScreen() {
       lastScrollY.current = offsetY;
 
       if (offsetY < 60) {
-        Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
+        animateFab("visible");
         return;
       }
 
       if (diff > 4) {
-        Animated.spring(fabAnim, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start();
+        animateFab("hidden");
       } else if (diff < -4) {
-        Animated.spring(fabAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
+        animateFab("visible");
       }
     },
-    [fabAnim]
+    [animateFab]
   );
 
   useEffect(() => {
@@ -99,187 +116,215 @@ export default function HomeScreen() {
     }, [fetchStories])
   );
 
-  const fetchPosts = async (pageNumber: number, f: Filters): Promise<void> => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const params: ListAllPostsParams = {
-        page: pageNumber,
-        limit: 20,
-        order: f.order,
-        orderBy: f.orderBy,
-        userId: f.onlyMine ? user?.sub : undefined,
-      };
-      const { data } = await listAllPosts(params);
-      setPosts((prev) => (pageNumber === 1 ? data : [...prev, ...data]));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchPosts = useCallback(
+    async (pageNumber: number, f: Filters): Promise<void> => {
+      if (loading) return;
+      setLoading(true);
+      try {
+        const params: ListAllPostsParams = {
+          page: pageNumber,
+          limit: 20,
+          order: f.order,
+          orderBy: f.orderBy,
+          userId: f.onlyMine ? user?.sub : undefined,
+        };
+        const { data } = await listAllPosts(params);
+        setPosts((prev) => (pageNumber === 1 ? data : [...prev, ...data]));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loading, user?.sub]
+  );
 
   useEffect(() => {
     fetchPosts(page, filters);
-  }, [page, filters]);
+  }, [fetchPosts, page, filters]);
 
   const applyFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
   };
 
-  const loadMorePosts = () => {
+  const loadMorePosts = useCallback(() => {
     if (!loading) setPage((prev) => prev + 1);
-  };
+  }, [loading]);
 
-  const handleSearchSubmit = () => {
+  const handleSearchSubmit = useCallback(() => {
     if (!searchQuery.trim()) {
       router.push("/search");
       return;
     }
     router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     setSearchQuery("");
-  };
+  }, [router, searchQuery]);
 
-  const iconColor = (active: boolean) => (active ? "white" : isDarkMode ? "#9ca3af" : "#6b7280");
+  const iconColor = useCallback(
+    (active: boolean) => (active ? "white" : isDarkMode ? "#9ca3af" : "#6b7280"),
+    [isDarkMode]
+  );
   const textPrimary = isDarkMode ? "text-white" : "text-gray-900";
   const textSecondary = isDarkMode ? "text-gray-400" : "text-gray-500";
 
-  const header = (
-    <View className={`px-4 pt-4 pb-4 gap-3 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
-      {stories.length > 0 ? (
-        <StoryStrip
-          stories={stories}
-          loading={loadingStories}
-          onPressStory={(story) => router.push(`/story/${story.id}`)}
-        />
-      ) : (
-        <Text
-          className={`text-center text-sm leading-6 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-        >
-          Bem-vindo ao mural de fotos do curso de Ciência da Computação da UNIR. Este espaço foi
-          criado para compartilhar visualizações, diagramas e projetos relacionados às disciplinas
-          do curso. Explore as imagens, comente e interaja com os trabalhos dos seus colegas e
-          professores.
-        </Text>
-      )}
+  const handlePressStory = useCallback(
+    (story: StoryListDtoItem) => router.push(`/story/${story.id}`),
+    [router]
+  );
 
-      {/* Search + filter button */}
-      <View className="flex-row items-center gap-2">
-        <View
-          className={`flex-1 flex-row items-center gap-3 px-4 rounded-2xl ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
-          style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
-        >
-          <Search size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearchSubmit}
-            placeholder="Buscar posts..."
-            placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
-            returnKeyType="search"
-            className={`flex-1 py-3 text-sm ${isDarkMode ? "text-white" : "text-gray-900"}`}
-          />
+  const handlePressPost = useCallback(
+    (item: GetPostDto) => router.push(`/post/${item.id}`),
+    [router]
+  );
+
+  const header = useMemo(
+    () => (
+      <View className={`px-4 pt-4 pb-4 gap-3 ${isDarkMode ? "bg-gray-900" : "bg-gray-100"}`}>
+        {stories.length > 0 ? (
+          <StoryStrip stories={stories} loading={loadingStories} onPressStory={handlePressStory} />
+        ) : (
+          <Text
+            className={`text-center text-sm leading-6 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+          >
+            Bem-vindo ao mural de fotos do curso de Ciência da Computação da UNIR. Este espaço foi
+            criado para compartilhar visualizações, diagramas e projetos relacionados às disciplinas
+            do curso. Explore as imagens, comente e interaja com os trabalhos dos seus colegas e
+            professores.
+          </Text>
+        )}
+
+        <View className="flex-row items-center gap-2">
+          <View
+            className={`flex-1 flex-row items-center gap-3 px-4 rounded-2xl ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+          >
+            <Search size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearchSubmit}
+              placeholder="Buscar posts..."
+              placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+              returnKeyType="search"
+              className={`flex-1 py-3 text-sm ${isDarkMode ? "text-white" : "text-gray-900"}`}
+            />
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setShowFilters((v) => !v)}
+            className={`w-11 h-11 rounded-2xl items-center justify-center ${showFilters ? "bg-indigo-600" : isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+          >
+            <SlidersHorizontal
+              size={18}
+              color={showFilters ? "white" : isDarkMode ? "#9ca3af" : "#6b7280"}
+            />
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          onPress={() => setShowFilters((v) => !v)}
-          className={`w-11 h-11 rounded-2xl items-center justify-center ${showFilters ? "bg-indigo-600" : isDarkMode ? "bg-gray-800" : "bg-white"}`}
-          style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
-        >
-          <SlidersHorizontal
-            size={18}
-            color={showFilters ? "white" : isDarkMode ? "#9ca3af" : "#6b7280"}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter accordion */}
-      {showFilters && (
-        <View
-          className={`rounded-2xl p-4 gap-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
-          style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
-        >
-          {/* Ordem */}
-          <View>
-            <Text
-              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
-            >
-              Ordem
-            </Text>
-            <View className="flex-row gap-2">
-              {(["desc", "asc"] as ListAllPostsOrder[]).map((value) => {
-                const active = filters.order === value;
-                const label = value === "desc" ? "Decrescente" : "Crescente";
-                const Icon = value === "desc" ? ArrowDownAZ : ArrowUpAZ;
-                return (
-                  <TouchableOpacity
-                    key={value}
-                    onPress={() => applyFilter("order", value)}
-                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
-                  >
-                    <Icon size={14} color={iconColor(active)} />
-                    <Text className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Ordenar por */}
-          <View>
-            <Text
-              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
-            >
-              Ordenar por
-            </Text>
-            <View className="flex-row gap-2">
-              {(
-                [
-                  { value: "createdAt", label: "Data", Icon: Clock },
-                  { value: "likes", label: "Likes", Icon: Heart },
-                  { value: "comments", label: "Comentários", Icon: MessageCircle },
-                ] as { value: ListAllPostsOrderBy; label: string; Icon: any }[]
-              ).map(({ value, label, Icon }) => {
-                const active = filters.orderBy === value;
-                return (
-                  <TouchableOpacity
-                    key={value}
-                    onPress={() => applyFilter("orderBy", value)}
-                    className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
-                  >
-                    <Icon size={14} color={iconColor(active)} />
-                    <Text className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Autor */}
-          <View>
-            <Text
-              className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
-            >
-              Autor
-            </Text>
-            <TouchableOpacity
-              onPress={() => applyFilter("onlyMine", !filters.onlyMine)}
-              className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border self-start ${filters.onlyMine ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
-            >
-              <User size={14} color={iconColor(filters.onlyMine)} />
+        {showFilters && (
+          <View
+            className={`rounded-2xl p-4 gap-4 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            style={{ elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}
+          >
+            <View>
               <Text
-                className={`text-xs font-medium ${filters.onlyMine ? "text-white" : textPrimary}`}
+                className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
               >
-                Meus posts
+                Ordem
               </Text>
-            </TouchableOpacity>
+              <View className="flex-row gap-2">
+                {(["desc", "asc"] as ListAllPostsOrder[]).map((value) => {
+                  const active = filters.order === value;
+                  const label = value === "desc" ? "Decrescente" : "Crescente";
+                  const Icon = value === "desc" ? ArrowDownAZ : ArrowUpAZ;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      onPress={() => applyFilter("order", value)}
+                      className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+                    >
+                      <Icon size={14} color={iconColor(active)} />
+                      <Text
+                        className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View>
+              <Text
+                className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
+              >
+                Ordenar por
+              </Text>
+              <View className="flex-row gap-2">
+                {(
+                  [
+                    { value: "createdAt", label: "Data", Icon: Clock },
+                    { value: "likes", label: "Likes", Icon: Heart },
+                    { value: "comments", label: "Comentários", Icon: MessageCircle },
+                  ] as { value: ListAllPostsOrderBy; label: string; Icon: any }[]
+                ).map(({ value, label, Icon }) => {
+                  const active = filters.orderBy === value;
+                  return (
+                    <TouchableOpacity
+                      key={value}
+                      onPress={() => applyFilter("orderBy", value)}
+                      className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${active ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+                    >
+                      <Icon size={14} color={iconColor(active)} />
+                      <Text
+                        className={`text-xs font-medium ${active ? "text-white" : textPrimary}`}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View>
+              <Text
+                className={`text-xs font-semibold uppercase tracking-wider mb-2 ${textSecondary}`}
+              >
+                Autor
+              </Text>
+              <TouchableOpacity
+                onPress={() => applyFilter("onlyMine", !filters.onlyMine)}
+                className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border self-start ${filters.onlyMine ? "bg-indigo-600 border-indigo-600" : isDarkMode ? "border-gray-600" : "border-gray-300"}`}
+              >
+                <User size={14} color={iconColor(filters.onlyMine)} />
+                <Text
+                  className={`text-xs font-medium ${filters.onlyMine ? "text-white" : textPrimary}`}
+                >
+                  Meus posts
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )}
-    </View>
+        )}
+      </View>
+    ),
+    [
+      filters.onlyMine,
+      filters.order,
+      filters.orderBy,
+      handlePressStory,
+      handleSearchSubmit,
+      iconColor,
+      isDarkMode,
+      loadingStories,
+      searchQuery,
+      showFilters,
+      stories,
+      textPrimary,
+      textSecondary,
+    ]
   );
 
   return (
@@ -316,7 +361,7 @@ export default function HomeScreen() {
           posts={posts}
           loading={loading}
           onLoadMore={loadMorePosts}
-          onPressItem={(item: GetPostDto) => router.push(`/post/${item.id}`)}
+          onPressItem={handlePressPost}
           onScroll={handleScroll}
           header={header}
         />

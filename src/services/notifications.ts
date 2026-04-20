@@ -99,7 +99,6 @@ export function getNotificationRoute(
   return null;
 }
 
-// Registro de push token
 export async function registerForPushNotifications(): Promise<string | null> {
   if (!Device.isDevice) {
     console.warn("[Notifications] Push notifications require a physical device.");

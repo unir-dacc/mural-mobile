@@ -362,6 +362,7 @@ function usePostDetail(id: string | undefined) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [commenting, setCommenting] = useState(false);
   const [savingPost, setSavingPost] = useState(false);
   const [deletingPost, setDeletingPost] = useState(false);
@@ -382,6 +383,7 @@ function usePostDetail(id: string | undefined) {
         setComments(commentsRes);
         setLiked(isLiked as boolean);
       })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -454,6 +456,7 @@ function usePostDetail(id: string | undefined) {
     liked,
     likeCount,
     loading,
+    notFound,
     commenting,
     savingPost,
     deletingPost,
@@ -493,6 +496,7 @@ export default function PostDetailScreen() {
     liked,
     likeCount,
     loading,
+    notFound,
     commenting,
     savingPost,
     deletingPost,
@@ -605,6 +609,26 @@ export default function PostDetailScreen() {
       },
     ]);
   }, [handleDeletePost, router]);
+
+  // ── Error state ──
+  if (notFound) {
+    return (
+      <View className={`flex-1 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}>
+        <StatusBar style={isDarkMode ? "light" : "dark"} />
+        <TopBar title="Post" />
+        <View className="flex-1 items-center justify-center px-8">
+          <Text
+            className={`text-base text-center ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+          >
+            Este post não está disponível.
+          </Text>
+          <TouchableOpacity onPress={() => router.back()} className="mt-4">
+            <Text className="text-indigo-500 text-sm font-semibold">Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   // ── Loading state ──
   if (loading || !post) {

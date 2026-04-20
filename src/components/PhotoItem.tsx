@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { View, Text, Image, TouchableOpacity } from "react-native";
 import { Play } from "lucide-react-native";
 import { Heart, MessageCircle, Image as ImageIcon } from "lucide-react-native";
@@ -10,23 +10,42 @@ interface PhotoItemProps {
   onPress?: (item: GetPostDto) => void;
 }
 
-export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
+const DEFAULT_ASPECT_RATIO = 1.33;
+const imageHeightCache = new Map<string, number>();
+
+function PhotoItemComponent({ item, columnWidth, onPress }: PhotoItemProps) {
   const [height, setHeight] = useState<number>(columnWidth * 1.33);
 
   const thumbnailUrl = item.thumbnailUrl ?? item.Media?.[0]?.imageUrl;
 
   useEffect(() => {
-    if (!thumbnailUrl) return;
+    if (!thumbnailUrl) {
+      setHeight(columnWidth * DEFAULT_ASPECT_RATIO);
+      return;
+    }
+
+    const cacheKey = `${thumbnailUrl}:${columnWidth}`;
+    const cachedHeight = imageHeightCache.get(cacheKey);
+
+    if (cachedHeight) {
+      setHeight(cachedHeight);
+      return;
+    }
+
     Image.getSize(
       thumbnailUrl,
       (w, h) => {
-        setHeight(columnWidth * (h / w));
+        const resolvedHeight = columnWidth * (h / w);
+        imageHeightCache.set(cacheKey, resolvedHeight);
+        setHeight(resolvedHeight);
       },
       () => {
-        setHeight(columnWidth * 1.33);
+        const fallbackHeight = columnWidth * DEFAULT_ASPECT_RATIO;
+        imageHeightCache.set(cacheKey, fallbackHeight);
+        setHeight(fallbackHeight);
       }
     );
-  }, [item.id, columnWidth, thumbnailUrl]);
+  }, [columnWidth, thumbnailUrl]);
 
   return (
     <TouchableOpacity
@@ -82,3 +101,17 @@ export function PhotoItem({ item, columnWidth, onPress }: PhotoItemProps) {
     </TouchableOpacity>
   );
 }
+
+export const PhotoItem = memo(
+  PhotoItemComponent,
+  (prev, next) =>
+    prev.columnWidth === next.columnWidth &&
+    prev.item.id === next.item.id &&
+    prev.item.thumbnailUrl === next.item.thumbnailUrl &&
+    prev.item.Media?.[0]?.imageUrl === next.item.Media?.[0]?.imageUrl &&
+    prev.item.isVideo === next.item.isVideo &&
+    prev.item._count?.likes === next.item._count?.likes &&
+    prev.item._count?.comments === next.item._count?.comments &&
+    prev.item._count?.Media === next.item._count?.Media &&
+    prev.onPress === next.onPress
+);
