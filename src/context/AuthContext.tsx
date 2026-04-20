@@ -15,6 +15,7 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
+  justLoggedIn: boolean;
   login: (dto: LoginDto) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   // Restaura sessão ao abrir o app
   useEffect(() => {
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(authUser));
     setToken(data.accessToken);
     setUser(authUser);
+    setJustLoggedIn(true);
   };
 
   const logout = async () => {
@@ -59,10 +62,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await SecureStore.deleteItemAsync(USER_KEY);
     setToken(null);
     setUser(null);
+    setJustLoggedIn(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, justLoggedIn, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
