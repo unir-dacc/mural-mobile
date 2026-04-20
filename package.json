@@ -11,7 +11,7 @@
     "lint": "expo lint",
     "prepare": "husky",
     "generate:api": "npx orval --config ./orval.config.js",
-    "eas-build-pre-install": "npm run generate-api"
+    "eas-build-post-install": "npm run generate:api"
   },
   "lint-staged": {
     "*.{js,ts,tsx,jsx}": [
@@ -70,6 +70,7 @@
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
+    "react-native-worklets-core": "^1.6.3",
     "tailwindcss": "^3.4.19",
     "zod": "^4.3.6"
   },
