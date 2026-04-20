@@ -1,14 +1,13 @@
 import { defineConfig } from "orval";
 import "dotenv/config";
 
-const SWAGGER_URL = process.env.EXPO_PUBLIC_SWAGGER_API_URL;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default defineConfig({
   api: {
     mock: false,
     input: {
-      target: SWAGGER_URL,
+      target: "./swagger.json",
     },
     output: {
       mode: "split",
@@ -24,8 +23,5 @@ export default defineConfig({
       },
     },
     client: "react-query",
-    axios: {
-      baseUrl: API_URL,
-    },
   },
 });
