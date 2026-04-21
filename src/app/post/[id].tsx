@@ -654,10 +654,7 @@ export default function PostDetailScreen() {
   return (
     <>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className={`flex-1 ${bg}`}
-      >
+      <KeyboardAvoidingView behavior="padding" className={`flex-1 ${bg}`}>
         <TopBar
           title="Post"
           right={
