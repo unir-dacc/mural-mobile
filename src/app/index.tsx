@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, Text, TouchableOpacity, TextInput, Animated, Image } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, Animated, Image, ScrollView } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
@@ -13,7 +13,7 @@ import {
   Heart,
   MessageCircle,
 } from "lucide-react-native";
-import { listAllPosts, getUserById, listStories } from "@/api/generated/api";
+import { listAllPosts, getUserById, listStories, likePost } from "@/api/generated/api";
 import {
   GetPostDto,
   GetUserDto,
@@ -54,6 +54,8 @@ export default function HomeScreen() {
   // ── FAB scroll-aware visibility ──
   const fabAnim = useRef(new Animated.Value(1)).current as any;
   const lastScrollY = useRef(0);
+  const savedScrollY = useRef(0);
+  const scrollViewRef = useRef<ScrollView>(null);
   const fabVisibilityRef = useRef<"visible" | "hidden">("visible");
   const loadingRef = useRef(false);
 
@@ -75,6 +77,7 @@ export default function HomeScreen() {
 
   const handleScroll = useCallback(
     (offsetY: number) => {
+      savedScrollY.current = offsetY;
       const diff = offsetY - lastScrollY.current;
       lastScrollY.current = offsetY;
 
@@ -114,6 +117,12 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchStories();
+      const y = savedScrollY.current;
+      if (y > 0) {
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y, animated: false });
+        }, 50);
+      }
     }, [fetchStories])
   );
 
@@ -178,6 +187,23 @@ export default function HomeScreen() {
     (item: GetPostDto) => router.push(`/post/${item.id}`),
     [router]
   );
+
+  const handleDoubleTapPost = useCallback((item: GetPostDto) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === item.id ? { ...p, _count: { ...p._count, likes: (p._count?.likes ?? 0) + 1 } } : p
+      )
+    );
+    likePost(item.id).catch(() => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === item.id
+            ? { ...p, _count: { ...p._count, likes: Math.max(0, (p._count?.likes ?? 1) - 1) } }
+            : p
+        )
+      );
+    });
+  }, []);
 
   const header = useMemo(
     () => (
@@ -365,7 +391,9 @@ export default function HomeScreen() {
           loading={loading}
           onLoadMore={loadMorePosts}
           onPressItem={handlePressPost}
+          onDoubleTapItem={handleDoubleTapPost}
           onScroll={handleScroll}
+          scrollViewRef={scrollViewRef}
           header={header}
         />
 

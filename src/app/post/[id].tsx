@@ -24,7 +24,6 @@ import {
   Heart,
   MessageCircle,
   Send,
-  Play,
   X,
   ChevronLeft,
   ChevronRight,
@@ -50,6 +49,7 @@ import { useAuth } from "@/context/AuthContext";
 import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { PostSkeleton, SkeletonPulse } from "@/components/PostSkeleton";
+import { ZoomableView } from "@/components/ZoomableView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -67,6 +67,7 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   onClose,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isZoomed, setIsZoomed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const { width: W, height: H } = Dimensions.get("window");
 
@@ -74,12 +75,17 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
-      // Scroll to the right position after layout
+      setIsZoomed(false);
       setTimeout(() => {
         scrollRef.current?.scrollTo({ x: initialIndex * W, animated: false });
       }, 0);
     }
   }, [visible, initialIndex, W]);
+
+  // Reset zoom when navigating to a different image
+  useEffect(() => {
+    setIsZoomed(false);
+  }, [currentIndex]);
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -91,6 +97,7 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
   const goTo = useCallback(
     (index: number) => {
+      setIsZoomed(false);
       scrollRef.current?.scrollTo({ x: index * W, animated: true });
       setCurrentIndex(index);
     },
@@ -145,31 +152,33 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           </View>
         )}
 
-        {/* Horizontal pager */}
+        {/* Horizontal pager — disabled while zoomed so pan doesn't change page */}
         <ScrollView
           ref={scrollRef}
           horizontal
           pagingEnabled
+          scrollEnabled={!isZoomed}
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={onScroll}
           style={{ flex: 1 }}
         >
           {images.map((img) => (
-            <View
+            <ZoomableView
               key={img.id}
               style={{ width: W, height: H, justifyContent: "center", alignItems: "center" }}
+              onScaleChange={(s) => setIsZoomed(s > 1)}
             >
               <Image
                 source={{ uri: img.imageUrl }}
                 style={{ width: W, height: H }}
                 resizeMode="contain"
               />
-            </View>
+            </ZoomableView>
           ))}
         </ScrollView>
 
-        {/* Prev / Next arrows */}
-        {images.length > 1 && (
+        {/* Prev / Next arrows — hidden while zoomed */}
+        {images.length > 1 && !isZoomed && (
           <>
             {currentIndex > 0 && (
               <TouchableOpacity
@@ -274,14 +283,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
   return (
     <View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}>
       {media.isVideo ? (
-        <>
-          <PostVideoPlayer uri={media.imageUrl} />
-          <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
-            <View className="w-12 h-12 rounded-full bg-black/40 items-center justify-center">
-              <Play size={22} color="white" fill="white" />
-            </View>
-          </View>
-        </>
+        <PostVideoPlayer uri={media.imageUrl} />
       ) : (
         <TouchableOpacity
           activeOpacity={0.95}
