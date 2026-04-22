@@ -24,6 +24,7 @@ import {
 } from "@/api/generated/model";
 import { MasonryGrid } from "@/components/MasonryGrid";
 import { StoryStrip } from "@/components/StoryStrip";
+import { HeartBurst } from "@/components/HeartBurst";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -47,6 +48,7 @@ export default function HomeScreen() {
     onlyMine: false,
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [burstKey, setBurstKey] = useState(0);
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
@@ -189,6 +191,7 @@ export default function HomeScreen() {
   );
 
   const handleDoubleTapPost = useCallback((item: GetPostDto) => {
+    setBurstKey((k) => k + 1);
     setPosts((prev) =>
       prev.map((p) =>
         p.id === item.id ? { ...p, _count: { ...p._count, likes: (p._count?.likes ?? 0) + 1 } } : p
@@ -396,6 +399,9 @@ export default function HomeScreen() {
           scrollViewRef={scrollViewRef}
           header={header}
         />
+
+        {/* ── Heart burst animation on double-tap like ── */}
+        {burstKey > 0 && <HeartBurst key={burstKey} />}
 
         {/* ── Floating Action Button ── */}
         <Animated.View
