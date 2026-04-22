@@ -112,7 +112,9 @@ export default function StoryViewerScreen() {
   const [commentCount, setCommentCount] = useState(0);
   const [commenting, setCommenting] = useState(false);
   const [loadingInteraction, setLoadingInteraction] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressValueRef = useRef(0);
   const listRef = useRef<FlatList<StoryDtoItemsItem>>(null);
 
   const items = useMemo(
@@ -173,18 +175,34 @@ export default function StoryViewerScreen() {
     [handleClose, items.length]
   );
 
+  // Track animated value so we can resume from the paused position
+  useEffect(() => {
+    const listenerId = progressAnim.addListener(({ value }) => {
+      progressValueRef.current = value;
+    });
+    return () => progressAnim.removeListener(listenerId);
+  }, [progressAnim]);
+
+  // Reset progress whenever the slide changes
   useEffect(() => {
     setMediaLoading(true);
+    setIsPaused(false);
     progressAnim.stopAnimation();
     progressAnim.setValue(0);
+    progressValueRef.current = 0;
+  }, [currentIndex, progressAnim]);
 
-    if (!currentItem || currentItem.isVideo) {
+  // Start/resume/pause the progress bar animation
+  useEffect(() => {
+    if (mediaLoading || isPaused || !currentItem || currentItem.isVideo) {
       return;
     }
 
+    const remainingDuration = (1 - progressValueRef.current) * IMAGE_STORY_DURATION;
+
     const animation = Animated.timing(progressAnim, {
       toValue: 1,
-      duration: IMAGE_STORY_DURATION,
+      duration: remainingDuration,
       useNativeDriver: false,
     });
 
@@ -195,7 +213,7 @@ export default function StoryViewerScreen() {
     });
 
     return () => animation.stop();
-  }, [currentIndex, currentItem, goToIndex, progressAnim]);
+  }, [currentIndex, currentItem, goToIndex, isPaused, mediaLoading, progressAnim]);
 
   useEffect(() => {
     if (!currentPostId) return;
@@ -434,8 +452,18 @@ export default function StoryViewerScreen() {
             zIndex: 10,
           }}
         >
-          <Pressable style={{ flex: 1 }} onPress={handleTapLeft} />
-          <Pressable style={{ flex: 1 }} onPress={handleTapRight} />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={handleTapLeft}
+            onPressIn={() => setIsPaused(true)}
+            onPressOut={() => setIsPaused(false)}
+          />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={handleTapRight}
+            onPressIn={() => setIsPaused(true)}
+            onPressOut={() => setIsPaused(false)}
+          />
         </View>
 
         <View
