@@ -252,6 +252,8 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 interface MediaItemProps {
   media: { id: string; imageUrl: string; isVideo?: boolean };
   onPress?: () => void;
+  onDoubleTap?: () => void;
+  onScaleChange?: (scale: number) => void;
 }
 
 const PostVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
@@ -267,9 +269,14 @@ const PostVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
   );
 };
 
-const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
+const DOUBLE_TAP_DELAY = 280;
+
+const MediaItem: React.FC<MediaItemProps> = ({ media, onPress, onDoubleTap, onScaleChange }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const heartAnim = useRef(new Animated.Value(0)).current;
+  const lastTapRef = useRef(0);
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onLoad = useCallback(() => {
     setImageLoaded(true);
@@ -280,6 +287,51 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
     }).start();
   }, [fadeAnim]);
 
+  useEffect(() => {
+    return () => {
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const showHeartAnimation = useCallback(() => {
+    heartAnim.setValue(0);
+    Animated.sequence([
+      Animated.spring(heartAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        bounciness: 12,
+      }),
+      Animated.delay(500),
+      Animated.timing(heartAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [heartAnim]);
+
+  const handlePress = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      lastTapRef.current = 0;
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
+      showHeartAnimation();
+      onDoubleTap?.();
+      return;
+    }
+
+    lastTapRef.current = now;
+    tapTimeoutRef.current = setTimeout(() => {
+      tapTimeoutRef.current = null;
+      onPress?.();
+    }, DOUBLE_TAP_DELAY);
+  }, [onDoubleTap, onPress, showHeartAnimation]);
+
   return (
     <View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}>
       {media.isVideo ? (
@@ -287,7 +339,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
       ) : (
         <TouchableOpacity
           activeOpacity={0.95}
-          onPress={onPress}
+          onPress={handlePress}
           style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
         >
           {/* Skeleton shown until image loads */}
@@ -297,12 +349,31 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
               style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
             />
           )}
-          <Animated.Image
-            source={{ uri: media.imageUrl }}
-            style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH, opacity: fadeAnim }}
-            resizeMode="cover"
-            onLoad={onLoad}
-          />
+          <ZoomableView
+            style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
+            onScaleChange={onScaleChange}
+            enableDoubleTapReset={false}
+          >
+            <Animated.Image
+              source={{ uri: media.imageUrl }}
+              style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH, opacity: fadeAnim }}
+              resizeMode="cover"
+              onLoad={onLoad}
+            />
+          </ZoomableView>
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              inset: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: heartAnim,
+              transform: [{ scale: heartAnim }],
+            }}
+          >
+            <Heart size={72} color="white" fill="white" />
+          </Animated.View>
         </TouchableOpacity>
       )}
     </View>
@@ -407,6 +478,18 @@ function usePostDetail(id: string | undefined) {
     }
   }, [id, liked]);
 
+  const handleDoubleTapLike = useCallback(async () => {
+    if (!id || liked) return;
+    setLiked(true);
+    setLikeCount((prev) => prev + 1);
+    try {
+      await likePost(id);
+    } catch {
+      setLiked(false);
+      setLikeCount((prev) => Math.max(0, prev - 1));
+    }
+  }, [id, liked]);
+
   const handleComment = useCallback(
     async (text: string, onSuccess: () => void) => {
       if (!text.trim() || !id) return;
@@ -462,6 +545,7 @@ function usePostDetail(id: string | undefined) {
     savingPost,
     deletingPost,
     handleLike,
+    handleDoubleTapLike,
     handleComment,
     handleUpdatePost,
     handleDeletePost,
@@ -482,6 +566,7 @@ export default function PostDetailScreen() {
   const [mediaIndex, setMediaIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [isMediaZoomed, setIsMediaZoomed] = useState(false);
   const [ownerMenuVisible, setOwnerMenuVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [draftCaption, setDraftCaption] = useState("");
@@ -499,6 +584,7 @@ export default function PostDetailScreen() {
     savingPost,
     deletingPost,
     handleLike,
+    handleDoubleTapLike,
     handleComment,
     handleUpdatePost,
     handleDeletePost,
@@ -526,6 +612,10 @@ export default function PostDetailScreen() {
   const handleCarouselScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     setMediaIndex(index);
+  }, []);
+
+  const handleMediaScaleChange = useCallback((scale: number) => {
+    setIsMediaZoomed(scale > 1);
   }, []);
 
   const onCommentSubmit = useCallback(() => {
@@ -644,7 +734,11 @@ export default function PostDetailScreen() {
           }
         />
 
-        <ScrollView showsVerticalScrollIndicator={false} scrollEventThrottle={16}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          scrollEnabled={!isMediaZoomed}
+        >
           {/* ── Post header ── */}
           <View className="flex-row items-center px-4 py-3 gap-3">
             <UserAvatar
@@ -666,6 +760,7 @@ export default function PostDetailScreen() {
               ref={scrollRef}
               horizontal
               pagingEnabled
+              scrollEnabled={!isMediaZoomed}
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={handleCarouselScroll}
             >
@@ -674,6 +769,8 @@ export default function PostDetailScreen() {
                   key={media.id}
                   media={media}
                   onPress={!media.isVideo ? () => openViewer(media.id) : undefined}
+                  onDoubleTap={!media.isVideo ? handleDoubleTapLike : undefined}
+                  onScaleChange={!media.isVideo ? handleMediaScaleChange : undefined}
                 />
               ))}
             </ScrollView>
