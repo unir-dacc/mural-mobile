@@ -42,11 +42,20 @@ import {
 } from "@/api/generated/api";
 import type { StoryDto, StoryDtoItemsItem } from "@/api/generated/model";
 import { useAuth } from "@/context/AuthContext";
+import { ZoomableView } from "@/components/ZoomableView";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const IMAGE_STORY_DURATION = 5000;
 
-function StoryMedia({ item, onLoaded }: { item: StoryDtoItemsItem; onLoaded: () => void }) {
+function StoryMedia({
+  item,
+  onLoaded,
+  onZoomChange,
+}: {
+  item: StoryDtoItemsItem;
+  onLoaded: () => void;
+  onZoomChange?: (zoomed: boolean) => void;
+}) {
   const player = useVideoPlayer(item.isVideo ? item.imageUrl : null, (videoPlayer) => {
     videoPlayer.loop = false;
     videoPlayer.play();
@@ -71,13 +80,18 @@ function StoryMedia({ item, onLoaded }: { item: StoryDtoItemsItem; onLoaded: () 
           onFirstFrameRender={onLoaded}
         />
       ) : (
-        <Image
-          source={{ uri: item.imageUrl }}
+        <ZoomableView
           style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-          resizeMode="contain"
-          onLoad={onLoaded}
-          onError={onLoaded}
-        />
+          onScaleChange={(s) => onZoomChange?.(s > 1)}
+        >
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+            resizeMode="contain"
+            onLoad={onLoaded}
+            onError={onLoaded}
+          />
+        </ZoomableView>
       )}
     </View>
   );
@@ -112,7 +126,10 @@ export default function StoryViewerScreen() {
   const [commentCount, setCommentCount] = useState(0);
   const [commenting, setCommenting] = useState(false);
   const [loadingInteraction, setLoadingInteraction] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressValueRef = useRef(0);
   const listRef = useRef<FlatList<StoryDtoItemsItem>>(null);
 
   const items = useMemo(
@@ -173,18 +190,35 @@ export default function StoryViewerScreen() {
     [handleClose, items.length]
   );
 
+  // Track animated value so we can resume from the paused position
+  useEffect(() => {
+    const listenerId = progressAnim.addListener(({ value }) => {
+      progressValueRef.current = value;
+    });
+    return () => progressAnim.removeListener(listenerId);
+  }, [progressAnim]);
+
+  // Reset progress whenever the slide changes
   useEffect(() => {
     setMediaLoading(true);
+    setIsPaused(false);
+    setIsZoomed(false);
     progressAnim.stopAnimation();
     progressAnim.setValue(0);
+    progressValueRef.current = 0;
+  }, [currentIndex, progressAnim]);
 
-    if (!currentItem || currentItem.isVideo) {
+  // Start/resume/pause the progress bar animation
+  useEffect(() => {
+    if (mediaLoading || isPaused || isZoomed || !currentItem || currentItem.isVideo) {
       return;
     }
 
+    const remainingDuration = (1 - progressValueRef.current) * IMAGE_STORY_DURATION;
+
     const animation = Animated.timing(progressAnim, {
       toValue: 1,
-      duration: IMAGE_STORY_DURATION,
+      duration: remainingDuration,
       useNativeDriver: false,
     });
 
@@ -195,7 +229,7 @@ export default function StoryViewerScreen() {
     });
 
     return () => animation.stop();
-  }, [currentIndex, currentItem, goToIndex, progressAnim]);
+  }, [currentIndex, currentItem, goToIndex, isPaused, isZoomed, mediaLoading, progressAnim]);
 
   useEffect(() => {
     if (!currentPostId) return;
@@ -281,6 +315,11 @@ export default function StoryViewerScreen() {
               setMediaLoading(false);
             }
           }}
+          onZoomChange={(zoomed) => {
+            if (item.id === currentItem?.id) {
+              setIsZoomed(zoomed);
+            }
+          }}
         />
       </View>
     ),
@@ -313,6 +352,7 @@ export default function StoryViewerScreen() {
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          scrollEnabled={!isZoomed}
           onMomentumScrollEnd={handleMomentumEnd}
           initialNumToRender={1}
           maxToRenderPerBatch={2}
@@ -434,8 +474,18 @@ export default function StoryViewerScreen() {
             zIndex: 10,
           }}
         >
-          <Pressable style={{ flex: 1 }} onPress={handleTapLeft} />
-          <Pressable style={{ flex: 1 }} onPress={handleTapRight} />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={!isZoomed ? handleTapLeft : undefined}
+            onPressIn={!isZoomed ? () => setIsPaused(true) : undefined}
+            onPressOut={!isZoomed ? () => setIsPaused(false) : undefined}
+          />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={!isZoomed ? handleTapRight : undefined}
+            onPressIn={!isZoomed ? () => setIsPaused(true) : undefined}
+            onPressOut={!isZoomed ? () => setIsPaused(false) : undefined}
+          />
         </View>
 
         <View

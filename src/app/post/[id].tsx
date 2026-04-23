@@ -24,11 +24,9 @@ import {
   Heart,
   MessageCircle,
   Send,
-  Play,
   X,
   ChevronLeft,
   ChevronRight,
-  Plus,
   MoreVertical,
   Pencil,
   Trash2,
@@ -51,6 +49,7 @@ import { useAuth } from "@/context/AuthContext";
 import { TopBar } from "@/components/TopBar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { PostSkeleton, SkeletonPulse } from "@/components/PostSkeleton";
+import { ZoomableView } from "@/components/ZoomableView";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -68,6 +67,7 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   onClose,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isZoomed, setIsZoomed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const { width: W, height: H } = Dimensions.get("window");
 
@@ -75,12 +75,17 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
   useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
-      // Scroll to the right position after layout
+      setIsZoomed(false);
       setTimeout(() => {
         scrollRef.current?.scrollTo({ x: initialIndex * W, animated: false });
       }, 0);
     }
   }, [visible, initialIndex, W]);
+
+  // Reset zoom when navigating to a different image
+  useEffect(() => {
+    setIsZoomed(false);
+  }, [currentIndex]);
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -92,6 +97,7 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
 
   const goTo = useCallback(
     (index: number) => {
+      setIsZoomed(false);
       scrollRef.current?.scrollTo({ x: index * W, animated: true });
       setCurrentIndex(index);
     },
@@ -146,31 +152,33 @@ const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
           </View>
         )}
 
-        {/* Horizontal pager */}
+        {/* Horizontal pager — disabled while zoomed so pan doesn't change page */}
         <ScrollView
           ref={scrollRef}
           horizontal
           pagingEnabled
+          scrollEnabled={!isZoomed}
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={onScroll}
           style={{ flex: 1 }}
         >
           {images.map((img) => (
-            <View
+            <ZoomableView
               key={img.id}
               style={{ width: W, height: H, justifyContent: "center", alignItems: "center" }}
+              onScaleChange={(s) => setIsZoomed(s > 1)}
             >
               <Image
                 source={{ uri: img.imageUrl }}
                 style={{ width: W, height: H }}
                 resizeMode="contain"
               />
-            </View>
+            </ZoomableView>
           ))}
         </ScrollView>
 
-        {/* Prev / Next arrows */}
-        {images.length > 1 && (
+        {/* Prev / Next arrows — hidden while zoomed */}
+        {images.length > 1 && !isZoomed && (
           <>
             {currentIndex > 0 && (
               <TouchableOpacity
@@ -275,14 +283,7 @@ const MediaItem: React.FC<MediaItemProps> = ({ media, onPress }) => {
   return (
     <View style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}>
       {media.isVideo ? (
-        <>
-          <PostVideoPlayer uri={media.imageUrl} />
-          <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
-            <View className="w-12 h-12 rounded-full bg-black/40 items-center justify-center">
-              <Play size={22} color="white" fill="white" />
-            </View>
-          </View>
-        </>
+        <PostVideoPlayer uri={media.imageUrl} />
       ) : (
         <TouchableOpacity
           activeOpacity={0.95}
@@ -486,9 +487,6 @@ export default function PostDetailScreen() {
   const [draftCaption, setDraftCaption] = useState("");
   const [draftIsPublic, setDraftIsPublic] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const fabAnim = useRef(new Animated.Value(1)).current;
-  const lastScrollY = useRef(0);
-  const fabVisible = useRef(true);
 
   const {
     post,
@@ -529,34 +527,6 @@ export default function PostDetailScreen() {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     setMediaIndex(index);
   }, []);
-
-  const handleVerticalScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const currentY = e.nativeEvent.contentOffset.y;
-      const diff = currentY - lastScrollY.current;
-      lastScrollY.current = currentY;
-
-      // scrolling down → hide FAB; scrolling up → show FAB
-      if (diff > 4 && fabVisible.current) {
-        fabVisible.current = false;
-        Animated.spring(fabAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          speed: 20,
-          bounciness: 4,
-        }).start();
-      } else if (diff < -4 && !fabVisible.current) {
-        fabVisible.current = true;
-        Animated.spring(fabAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          speed: 20,
-          bounciness: 8,
-        }).start();
-      }
-    },
-    [fabAnim]
-  );
 
   const onCommentSubmit = useCallback(() => {
     handleComment(commentText, () => setCommentText(""));
@@ -654,10 +624,7 @@ export default function PostDetailScreen() {
   return (
     <>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className={`flex-1 ${bg}`}
-      >
+      <KeyboardAvoidingView behavior="padding" className={`flex-1 ${bg}`}>
         <TopBar
           title="Post"
           right={
@@ -677,11 +644,7 @@ export default function PostDetailScreen() {
           }
         />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          onScroll={handleVerticalScroll}
-          scrollEventThrottle={16}
-        >
+        <ScrollView showsVerticalScrollIndicator={false} scrollEventThrottle={16}>
           {/* ── Post header ── */}
           <View className="flex-row items-center px-4 py-3 gap-3">
             <UserAvatar
@@ -795,38 +758,6 @@ export default function PostDetailScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* ── FAB: novo post ── */}
-      <Animated.View
-        style={{
-          position: "absolute",
-          bottom: 96,
-          right: 20,
-          opacity: fabAnim,
-          transform: [{ scale: fabAnim }],
-        }}
-        pointerEvents={fabVisible.current ? "auto" : "none"}
-      >
-        <TouchableOpacity
-          onPress={() => router.push("/post/create")}
-          activeOpacity={0.85}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: "#4f46e5",
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: "#4f46e5",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.45,
-            shadowRadius: 10,
-            elevation: 8,
-          }}
-        >
-          <Plus size={26} color="#fff" strokeWidth={2.5} />
-        </TouchableOpacity>
-      </Animated.View>
 
       {/* ── Full-screen image viewer ── */}
       <ImageViewerModal

@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   useColorScheme,
+  type ScrollViewProps,
 } from "react-native";
 import { GetPostDto } from "@/api/generated/model";
 import { PhotoItem } from "./PhotoItem";
@@ -19,8 +20,10 @@ interface MasonryGridProps {
   loading: boolean;
   onLoadMore: () => void;
   onPressItem?: (item: GetPostDto) => void;
+  onDoubleTapItem?: (item: GetPostDto) => void;
   onScroll?: (offsetY: number) => void;
   header?: React.ReactNode;
+  scrollViewRef?: React.RefObject<ScrollView | null>;
 }
 
 export function MasonryGrid({
@@ -28,8 +31,10 @@ export function MasonryGrid({
   loading,
   onLoadMore,
   onPressItem,
+  onDoubleTapItem,
   onScroll,
   header,
+  scrollViewRef,
 }: MasonryGridProps) {
   const { width: screenWidth } = useWindowDimensions();
   const colorScheme = useColorScheme();
@@ -80,6 +85,7 @@ export function MasonryGrid({
 
   return (
     <ScrollView
+      ref={scrollViewRef}
       contentContainerStyle={{
         paddingHorizontal: HORIZONTAL_PADDING,
         paddingBottom: HORIZONTAL_PADDING,
@@ -118,6 +124,7 @@ export function MasonryGrid({
                 item={item}
                 columnWidth={columnWidth}
                 onPress={onPressItem}
+                onDoubleTap={onDoubleTapItem}
               />
             ))}
             {loading &&

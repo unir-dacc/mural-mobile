@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Settings, Camera, Mail, FileText } from "lucide-react-native";
@@ -116,14 +116,24 @@ export default function ProfileScreen() {
     if (result.canceled) return;
     setUploadingAvatar(true);
     try {
-      const response = await fetch(result.assets[0].uri);
-      const blob = await response.blob();
-      const uploadData = await awsControllerUploadImage({ image: blob, folder: "avatars" });
+      const asset = result.assets[0];
+      const fallbackExtension = asset.uri.split(".").pop() ?? "jpg";
+      const mimeType = asset.mimeType ?? "image/jpeg";
+      const fileName = asset.fileName ?? `avatar.${fallbackExtension}`;
+
+      const uploadData = await awsControllerUploadImage({
+        image: {
+          uri: asset.uri,
+          name: fileName,
+          type: mimeType,
+        } as unknown as Blob,
+        folder: "avatars",
+      });
       if (!uploadData.url) throw new Error();
       const updatedUser = await updateCurrentUser({ avatarUrl: uploadData.url });
       setProfile(updatedUser);
     } catch {
-      //
+      Alert.alert("Erro", "Nao foi possivel atualizar a foto de perfil. Tente novamente.");
     } finally {
       setUploadingAvatar(false);
     }
