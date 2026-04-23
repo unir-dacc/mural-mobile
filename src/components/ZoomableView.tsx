@@ -13,11 +13,19 @@ interface ZoomableViewProps {
   style?: StyleProp<ViewStyle>;
   /** Called on the JS thread when scale changes. Use to disable surrounding scroll. */
   onScaleChange?: (scale: number) => void;
+  onDoubleTap?: () => void;
+  enableDoubleTapReset?: boolean;
 }
 
 const MAX_SCALE = 5;
 
-export function ZoomableView({ children, style, onScaleChange }: ZoomableViewProps) {
+export function ZoomableView({
+  children,
+  style,
+  onScaleChange,
+  onDoubleTap,
+  enableDoubleTapReset = true,
+}: ZoomableViewProps) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -26,6 +34,7 @@ export function ZoomableView({ children, style, onScaleChange }: ZoomableViewPro
   const savedTranslateY = useSharedValue(0);
 
   const notify = (s: number) => onScaleChange?.(s);
+  const notifyDoubleTap = () => onDoubleTap?.();
 
   const reset = () => {
     "worklet";
@@ -67,7 +76,12 @@ export function ZoomableView({ children, style, onScaleChange }: ZoomableViewPro
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(() => {
-      reset();
+      if (scale.value > 1 && enableDoubleTapReset) {
+        reset();
+        return;
+      }
+
+      if (onDoubleTap) runOnJS(notifyDoubleTap)();
     });
 
   const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
