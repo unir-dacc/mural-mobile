@@ -1,8 +1,18 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { Settings, Camera, Mail, FileText } from "lucide-react-native";
+import { Settings, Camera, Mail, FileText, Pencil, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import {
   getUserById,
@@ -31,6 +41,10 @@ export default function ProfileScreen() {
   const [loadingTagged, setLoadingTagged] = useState(false);
   const [taggedPage, setTaggedPage] = useState(1);
   const [taggedHasMore, setTaggedHasMore] = useState(true);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftBio, setDraftBio] = useState("");
 
   const { isDarkMode } = useTheme();
   const { user } = useAuth();
@@ -43,6 +57,12 @@ export default function ProfileScreen() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user?.sub]);
+
+  useEffect(() => {
+    if (!profile) return;
+    setDraftName(profile.name ?? "");
+    setDraftBio(profile.bio ?? "");
+  }, [profile]);
 
   const fetchPosts = useCallback(
     async (pageNumber: number) => {
@@ -139,6 +159,38 @@ export default function ProfileScreen() {
     }
   };
 
+  const openEditModal = useCallback(() => {
+    if (!profile) return;
+    setDraftName(profile.name ?? "");
+    setDraftBio(profile.bio ?? "");
+    setEditModalVisible(true);
+  }, [profile]);
+
+  const handleSaveProfile = useCallback(async () => {
+    const trimmedName = draftName.trim();
+    const trimmedBio = draftBio.trim();
+
+    if (trimmedName.length < 2) {
+      Alert.alert("Atenção", "O nome deve ter pelo menos 2 caracteres.");
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      const updatedUser = await updateCurrentUser({
+        name: trimmedName,
+        bio: trimmedBio || undefined,
+      });
+      setProfile(updatedUser);
+      setEditModalVisible(false);
+      Alert.alert("Perfil atualizado", "Suas informações foram salvas com sucesso.");
+    } catch {
+      Alert.alert("Erro", "Não foi possível atualizar o perfil. Tente novamente.");
+    } finally {
+      setSavingProfile(false);
+    }
+  }, [draftBio, draftName]);
+
   if (loading) {
     return (
       <View
@@ -148,6 +200,12 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  const textPrimary = isDarkMode ? "text-white" : "text-gray-900";
+  const textSecondary = isDarkMode ? "text-gray-400" : "text-gray-500";
+  const modalBg = isDarkMode ? "bg-gray-800" : "bg-white";
+  const inputBg = isDarkMode ? "bg-gray-900" : "bg-gray-50";
+  const inputBorder = isDarkMode ? "border-gray-700" : "border-gray-200";
 
   const header = (
     <View className={isDarkMode ? "bg-gray-900" : "bg-gray-100"}>
@@ -196,31 +254,32 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <Text
-          className={`font-bold text-base mb-0.5 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-        >
-          {profile?.name ?? "—"}
-        </Text>
-        {profile?.bio ? (
-          <Text
-            className={`text-sm leading-5 mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Text className={`font-bold text-base mb-0.5 ${textPrimary}`}>
+              {profile?.name ?? "—"}
+            </Text>
+            {profile?.bio ? (
+              <Text className={`text-sm leading-5 mb-3 ${textSecondary}`}>{profile.bio}</Text>
+            ) : null}
+          </View>
+          <TouchableOpacity
+            onPress={openEditModal}
+            activeOpacity={0.7}
+            className={`w-10 h-10 rounded-full items-center justify-center ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
           >
-            {profile.bio}
-          </Text>
-        ) : null}
+            <Pencil size={16} color={isDarkMode ? "#f9fafb" : "#111827"} />
+          </TouchableOpacity>
+        </View>
 
         <View className="mt-3 gap-2">
           <View className="flex-row items-center gap-2">
             <Mail size={14} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-            <Text className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-              {profile?.email}
-            </Text>
+            <Text className={`text-sm ${textSecondary}`}>{profile?.email}</Text>
           </View>
           <View className="flex-row items-center gap-2">
             <FileText size={14} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-            <Text className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-              {profile?.cpf}
-            </Text>
+            <Text className={`text-sm ${textSecondary}`}>{profile?.cpf}</Text>
           </View>
         </View>
       </View>
@@ -239,6 +298,84 @@ export default function ProfileScreen() {
         header={header}
         emptyText={activeTab === "posts" ? "Nenhum post ainda" : "Nenhuma menção encontrada"}
       />
+
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1 justify-center bg-black/50 px-4"
+        >
+          <View
+            className={`rounded-3xl p-5 ${modalBg}`}
+            style={{ elevation: 10, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 16 }}
+          >
+            <View className="flex-row items-center justify-between mb-4">
+              <View>
+                <Text className={`text-lg font-bold ${textPrimary}`}>Editar perfil</Text>
+                <Text className={`text-sm mt-1 ${textSecondary}`}>
+                  Atualize seu nome e sua biografia.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} activeOpacity={0.7}>
+                <X size={20} color={isDarkMode ? "#f9fafb" : "#111827"} />
+              </TouchableOpacity>
+            </View>
+
+            <View className="gap-4">
+              <View>
+                <Text className={`text-sm font-semibold mb-2 ${textPrimary}`}>Nome</Text>
+                <TextInput
+                  value={draftName}
+                  onChangeText={setDraftName}
+                  placeholder="Seu nome"
+                  placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+                  className={`rounded-2xl border px-4 py-3 text-sm ${textPrimary} ${inputBg} ${inputBorder}`}
+                />
+              </View>
+
+              <View>
+                <Text className={`text-sm font-semibold mb-2 ${textPrimary}`}>Bio</Text>
+                <TextInput
+                  value={draftBio}
+                  onChangeText={setDraftBio}
+                  placeholder="Conte um pouco sobre você"
+                  placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
+                  multiline
+                  textAlignVertical="top"
+                  className={`min-h-[120px] rounded-2xl border px-4 py-3 text-sm ${textPrimary} ${inputBg} ${inputBorder}`}
+                />
+              </View>
+            </View>
+
+            <View className="flex-row gap-3 mt-5">
+              <TouchableOpacity
+                onPress={() => setEditModalVisible(false)}
+                disabled={savingProfile}
+                className={`flex-1 rounded-2xl border py-3 items-center ${inputBorder}`}
+              >
+                <Text className={`text-sm font-semibold ${textPrimary}`}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+                className={`flex-1 rounded-2xl py-3 items-center ${
+                  savingProfile ? "bg-indigo-400" : "bg-indigo-600"
+                }`}
+              >
+                {savingProfile ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text className="text-sm font-semibold text-white">Salvar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }
