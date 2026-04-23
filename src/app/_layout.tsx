@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { View, ActivityIndicator, Platform } from "react-native";
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -95,7 +95,7 @@ function AuthGuard() {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["bottom", "left", "right"]}>
       <View style={{ flex: 1 }}>
-        <Slot />
+        <Stack screenOptions={{ headerShown: false }} />
         {banner && (
           <NotificationBanner
             title={banner.title!}
