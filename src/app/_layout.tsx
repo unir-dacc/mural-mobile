@@ -5,6 +5,7 @@ import * as Notifications from "expo-notifications";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { NotificationHistoryProvider } from "@/context/NotificationHistoryContext";
 import { useNotificationSetup } from "@/hooks/useNotificationSetup";
 import "../global.css";
 import { getNotificationImage } from "@/services/notifications";
@@ -112,9 +113,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <AuthGuard />
-        </AuthProvider>
+        <NotificationHistoryProvider>
+          <AuthProvider>
+            <AuthGuard />
+          </AuthProvider>
+        </NotificationHistoryProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

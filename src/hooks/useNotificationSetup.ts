@@ -13,14 +13,17 @@ import {
   getNotificationRoute,
   parseNotificationData,
 } from "@/services/notifications";
+import { useNotificationHistory } from "@/context/NotificationHistoryContext";
 
 export function useNotificationSetup() {
   const router = useRouter();
-  const { user, justLoggedIn } = useAuth();
+  const { user, justLoggedIn, isLoading } = useAuth();
+  const { addNotification } = useNotificationHistory();
 
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const receivedListener = useRef<Notifications.EventSubscription | null>(null);
   const isReady = useRef(false);
+  const initialNotifHandled = useRef(false);
 
   const [banner, setBanner] = useState<{
     title: string | null;
@@ -53,6 +56,9 @@ export function useNotificationSetup() {
     const imageUrl = getNotificationImage(notification);
     const title = notification.request.content.title ?? "";
     const body = notification.request.content.body ?? "";
+    const data = parseNotificationData(notification);
+
+    addNotification({ title, body, data });
 
     if (imageUrl) {
       if (Platform.OS === "android") {
@@ -101,18 +107,24 @@ export function useNotificationSetup() {
       handleNotificationReceived
     );
 
-    // Caso o app tenha sido aberto a partir de uma notificação
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) {
-        handleNotificationResponse(response);
-      }
-    });
-
     return () => {
       responseListener.current?.remove();
       receivedListener.current?.remove();
     };
   }, [user, justLoggedIn, router]);
+
+  // Trata o caso em que o app foi aberto a partir de uma notificação (cold start).
+  // Só executa após a autenticação estar resolvida e apenas uma vez.
+  useEffect(() => {
+    if (isLoading || !user || initialNotifHandled.current) return;
+
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        initialNotifHandled.current = true;
+        handleNotificationResponse(response);
+      }
+    });
+  }, [isLoading, user, router]);
 
   return { banner, setBanner }; // Retornamos para renderizar o banner no layout
 }

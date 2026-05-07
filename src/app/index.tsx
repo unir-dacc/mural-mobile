@@ -12,6 +12,7 @@ import {
   Clock,
   Heart,
   MessageCircle,
+  Bell,
 } from "lucide-react-native";
 import { listAllPosts, getUserById, listStories, likePost } from "@/api/generated/api";
 import {
@@ -25,8 +26,10 @@ import {
 import { MasonryGrid } from "@/components/MasonryGrid";
 import { StoryStrip } from "@/components/StoryStrip";
 import { HeartBurst } from "@/components/HeartBurst";
+import { NotificationDrawer } from "@/components/NotificationDrawer";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useNotificationHistory } from "@/context/NotificationHistoryContext";
 
 type Filters = {
   order: ListAllPostsOrder;
@@ -49,9 +52,11 @@ export default function HomeScreen() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [burstKey, setBurstKey] = useState(0);
+  const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
   const { isDarkMode } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
+  const { unreadCount } = useNotificationHistory();
 
   // ── FAB scroll-aware visibility ──
   const fabAnim = useRef(new Animated.Value(1)).current as any;
@@ -368,7 +373,32 @@ export default function HomeScreen() {
           className={`pt-14 px-4 pb-3 flex-row items-center justify-between ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
           style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 3 }}
         >
-          <View style={{ width: 36 }} />
+          <TouchableOpacity
+            onPress={() => setNotifDrawerOpen(true)}
+            style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+          >
+            <Bell size={22} color={isDarkMode ? "#f9fafb" : "#111827"} />
+            {unreadCount > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: "#ef4444",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 3,
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <Text className={`text-lg font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
             Mural de Fotos
           </Text>
@@ -402,6 +432,9 @@ export default function HomeScreen() {
 
         {/* ── Heart burst animation on double-tap like ── */}
         {burstKey > 0 && <HeartBurst key={burstKey} />}
+
+        {/* ── Notification drawer ── */}
+        <NotificationDrawer visible={notifDrawerOpen} onClose={() => setNotifDrawerOpen(false)} />
 
         {/* ── Floating Action Button ── */}
         <Animated.View
