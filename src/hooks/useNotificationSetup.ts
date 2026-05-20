@@ -76,45 +76,28 @@ export function useNotificationSetup() {
   }, [user]);
 
   useEffect(() => {
-    if (user && justLoggedIn && !isReady.current) {
-      (async () => {
-        try {
-          const token = await registerForPushNotifications();
+    if (!user || isReady.current) return;
 
-          if (token) {
-            const platform =
-              Platform.OS === "android" ? UpdateUserDtoPlatform.ANDROID : UpdateUserDtoPlatform.IOS;
+    (async () => {
+      try {
+        const token = await registerForPushNotifications();
 
-            await updateCurrentUser({ token, platform });
-            console.log("[Notifications] Token sincronizado.");
-          }
+        if (token) {
+          const platform =
+            Platform.OS === "android" ? UpdateUserDtoPlatform.ANDROID : UpdateUserDtoPlatform.IOS;
 
-          await setupNotificationCategories();
-          isReady.current = true;
-        } catch (error) {
-          console.error("[Notifications] Falha no setup:", error);
+          await updateCurrentUser({ token, platform });
         }
-      })();
-    }
 
-    // Listener quando o usuário interage com a notificação
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      handleNotificationResponse
-    );
+        await setupNotificationCategories();
 
-    // Listener para notificações recebidas no foreground
-    receivedListener.current = Notifications.addNotificationReceivedListener(
-      handleNotificationReceived
-    );
+        isReady.current = true;
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+  }, [user]);
 
-    return () => {
-      responseListener.current?.remove();
-      receivedListener.current?.remove();
-    };
-  }, [user, justLoggedIn, router]);
-
-  // Trata o caso em que o app foi aberto a partir de uma notificação (cold start).
-  // Só executa após a autenticação estar resolvida e apenas uma vez.
   useEffect(() => {
     if (isLoading || !user || initialNotifHandled.current) return;
 
